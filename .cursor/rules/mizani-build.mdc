@@ -1,0 +1,44 @@
+---
+description: Mizani build non-negotiables and build order
+alwaysApply: true
+---
+
+# Mizani build rules
+
+You are building Mizani, an agent that prepares cited procurement briefs from Kenya OCDS data for a human committee.
+
+## Non-negotiables
+
+- The agent never awards a tender, ranks bidders or recommends a winner. No tool for this may exist.
+- Approval is NOT an MCP tool and is not reachable by the model. It is a separate CLI command that records a named approver.
+- Every finding carries a non-empty list of record IDs. Reject findings without them in the schema.
+- All numbers in findings come from deterministic code. The model never computes them.
+- Never use live tenders or personal details. Company and buyer records only.
+- Write all code fresh. Do not copy code from any earlier project.
+- Never invent threshold values. Read them from config/thresholds.yaml, each with a legal_source.
+
+## Code quality
+
+- Python 3.11+, type hints everywhere, Pydantic v2 models for all tool inputs and outputs.
+- Module docstring on every file; docstring on every function (inputs, outputs, why).
+- Keep functions small and single-purpose. No dead code.
+- Format and lint with ruff. Add pytest tests beside each module.
+- Log every tool call through the ledger wrapper, not inside the tool.
+
+## Build order (do not skip ahead)
+
+1. Repo scaffold, Makefile, config, licence
+2. Ingestion: OCDS loader, filters, canonicalisation, DuckDB, data-quality report
+3. Ledger
+4. Detectors
+5. Verifier
+6. MCP server (five core tools)
+7. LangGraph agent
+8. Brief generator and approval CLI
+9. Eval harness E1–E12
+10. README, ARCHITECTURE.md, demo
+11. Stretch only after core passes
+
+## When unsure
+
+Ask before guessing about data fields, endpoint formats or legal thresholds.

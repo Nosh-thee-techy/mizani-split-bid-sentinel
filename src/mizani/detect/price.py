@@ -62,8 +62,10 @@ def detect_price_outliers(
             targets = [p for p in peers if str(p["record_id"]) == target_record_id]
             if not targets:
                 continue
-        if len(peers) < min_peers:
-            for t in targets:
+        for t in targets:
+            # Peer stats must exclude the target so one extreme cannot hide itself.
+            others = [p for p in peers if str(p["record_id"]) != str(t["record_id"])]
+            if len(others) < min_peers:
                 findings.append(
                     Finding(
                         type=FindingType.PRICE,
@@ -72,7 +74,7 @@ def detect_price_outliers(
                         category=t.get("category") or desc,
                         record_ids=[str(t["record_id"])],
                         metrics={
-                            "peer_count": len(peers),
+                            "peer_count": len(others),
                             "min_peers": min_peers,
                             "description_norm": desc,
                             "unit_norm": unit,
@@ -82,23 +84,27 @@ def detect_price_outliers(
                         data_caveats=["insufficient peers for robust benchmark"],
                     )
                 )
-            continue
-
-        log_prices = [math.log(float(p["unit_value_amount"])) for p in peers]
-        winsorised = _winsorise(log_prices, low_pct, high_pct)
-        median = _median(winsorised)
-        mad = _mad(winsorised, median)
-        if mad == 0:
-            continue
-        for t in targets:
-            lp = math.log(float(t["unit_value_amount"]))
-            z = 0.6745 * (lp - median) / mad
-            if abs(z) < z_cutoff and target_record_id is None:
                 continue
-            if abs(z) < z_cutoff and target_record_id is not None:
-                # Explicit target asked: still return metrics but not as flag unless over cutoff
-                if abs(z) < z_cutoff:
+
+            log_prices = [math.log(float(p["unit_value_amount"])) for p in others]
+            winsorised = _winsorise(log_prices, low_pct, high_pct)
+            median = _median(winsorised)
+            mad = _mad(winsorised, median)
+            lp = math.log(float(t["unit_value_amount"]))
+            # If peers have zero MAD (identical after winsorise), flag only large
+            # relative departures (default: outside 2x / 0.5x) so mild noise after
+            # an extreme peer is winsorised away is not treated as an outlier.
+            if mad == 0:
+                if abs(lp - median) < 1e-12:
                     continue
+                rel = math.exp(lp) / math.exp(median)
+                if 0.5 <= rel <= 2.0:
+                    continue
+                z = 10.0 if lp > median else -10.0
+            else:
+                z = 0.6745 * (lp - median) / mad
+            if abs(z) < z_cutoff:
+                continue
             findings.append(
                 Finding(
                     type=FindingType.PRICE,
@@ -108,7 +114,7 @@ def detect_price_outliers(
                     record_ids=[str(t["record_id"])],
                     metrics={
                         "unit_price": float(t["unit_value_amount"]),
-                        "peer_count": len(peers),
+                        "peer_count": len(others),
                         "log_median": round(median, 6),
                         "log_mad": round(mad, 6),
                         "robust_z": round(z, 4),

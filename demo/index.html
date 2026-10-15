@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mizani — Split-Bid Sentinel (demo)</title>
+  <!-- Project Pages live under /mizani-split-bid-sentinel/; keep relative API links working. -->
+  <script>
+    (function () {
+      if (location.hostname.endsWith("github.io")) {
+        const base = document.createElement("base");
+        base.href = "/mizani-split-bid-sentinel/";
+        document.head.appendChild(base);
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2218;
+      --muted: #5c6b57;
+      --paper: #f3efe6;
+      --panel: #fffdf8;
+      --line: #d5cec0;
+      --accent: #0f6b4c;
+      --warn: #8a5a12;
+      --danger: #7a2e2e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #dce8df 0%, transparent 55%),
+        radial-gradient(900px 400px at 100% 0%, #e8dfd0 0%, transparent 50%),
+        var(--paper);
+      line-height: 1.5;
+    }
+    header {
+      padding: 2.5rem 1.25rem 1.5rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .brand {
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: clamp(2.4rem, 5vw, 3.4rem);
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+    }
+    .lede { color: var(--muted); max-width: 42rem; margin: 0; }
+    .badge {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.35rem 0.7rem;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      font-size: 0.85rem;
+      color: var(--warn);
+    }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.25rem 3rem;
+      display: grid;
+      gap: 1.25rem;
+    }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: 1.1rem 1.2rem 1.25rem;
+    }
+    h2 {
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: 1.55rem;
+      font-weight: 400;
+      margin: 0 0 0.75rem;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      padding: 0.75rem;
+      background: #faf7f0;
+    }
+    .metric strong {
+      display: block;
+      font-size: 1.45rem;
+      color: var(--accent);
+      line-height: 1.1;
+    }
+    .metric span { color: var(--muted); font-size: 0.82rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.45rem 0.4rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 600; }
+    .excluded { color: var(--danger); }
+    .apis a {
+      display: inline-block;
+      margin: 0.25rem 0.6rem 0.25rem 0;
+      color: var(--accent);
+    }
+    code {
+      font-size: 0.85em;
+      background: #efe9dc;
+      padding: 0.1rem 0.3rem;
+    }
+    footer {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.25rem 2.5rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    footer a { color: var(--accent); }
+    .err { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 class="brand">Mizani</h1>
+    <p class="lede">
+      Cited, auditable procurement briefs from Kenya OCDS award data.
+      This live demo shows the working ingest and data-quality slice
+      (build steps 1–2). The agent, MCP tools, and human release gate follow next.
+    </p>
+    <div class="badge" id="status-badge">Loading demo data…</div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Data-quality snapshot</h2>
+      <p style="color:var(--muted);margin-top:0">
+        Synthetic labelled sample — not mixed into real-data findings.
+      </p>
+      <div class="metrics" id="metrics"></div>
+    </section>
+
+    <section>
+      <h2>Awards after filters</h2>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Buyer</th>
+              <th>Supplier</th>
+              <th>Value (KES)</th>
+              <th>Place</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="awards-body">
+            <tr><td colspan="6">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="apis">
+      <h2>API endpoints</h2>
+      <p style="color:var(--muted);margin-top:0">
+        Static JSON endpoints served with this demonstration.
+      </p>
+      <div>
+        <a href="api/health.json"><code>GET api/health.json</code></a>
+        <a href="api/quality.json"><code>GET api/quality.json</code></a>
+        <a href="api/awards.json"><code>GET api/awards.json</code></a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Source:
+    <a href="https://github.com/Nosh-thee-techy/mizani-split-bid-sentinel">
+      Nosh-thee-techy/mizani-split-bid-sentinel
+    </a>
+    · Apache-2.0 · Never awards a tender · Never accuses a supplier
+  </footer>
+
+  <script>
+    const fmt = (n) => n == null ? "—" : Number(n).toLocaleString();
+    const money = (n) => n == null ? "—" : Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+    async function load() {
+      const [health, quality, awards] = await Promise.all([
+        fetch("api/health.json").then((r) => r.json()),
+        fetch("api/quality.json").then((r) => r.json()),
+        fetch("api/awards.json").then((r) => r.json()),
+      ]);
+
+      document.getElementById("status-badge").textContent =
+        `${health.status.toUpperCase()} · ${health.service} · step ${health.build_step}`;
+
+      const c = quality.row_counts;
+      const place = quality.place_lens;
+      const vals = quality.value_distribution || {};
+      const cards = [
+        ["Awards kept", c.awards_kept],
+        ["Awards excluded", c.awards_excluded],
+        ["Open tenders dropped", c.tenders_excluded_open],
+        ["Canonical suppliers", c.suppliers_canonical],
+        ["Location coverage", place.location_coverage == null ? "—" : `${Math.round(place.location_coverage * 100)}%`],
+        ["Outliers >100× median", vals.extreme_outlier_count_gt_100x_median ?? 0],
+      ];
+      document.getElementById("metrics").innerHTML = cards.map(([label, value]) => `
+        <div class="metric"><strong>${value}</strong><span>${label}</span></div>
+      `).join("");
+
+      const body = document.getElementById("awards-body");
+      body.innerHTML = awards.map((a) => {
+        const placeLabel = a.county || a.region || "unlocated";
+        const buyer = a.buyer_name || a.buyer_id || "—";
+        const status = a.excluded
+          ? `<span class="excluded">excluded (${a.exclude_reason || "n/a"})</span>`
+          : "kept";
+        return `<tr>
+          <td>${a.date || "—"}</td>
+          <td>${buyer}</td>
+          <td>${a.supplier_canonical_name || "—"}</td>
+          <td>${money(a.value_amount)}</td>
+          <td>${placeLabel}</td>
+          <td>${status}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    load().catch((err) => {
+      document.getElementById("status-badge").textContent = "Failed to load demo data";
+      document.getElementById("status-badge").classList.add("err");
+      document.getElementById("awards-body").innerHTML =
+        `<tr><td colspan="6" class="err">${err}</td></tr>`;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+﻿{
+  "status": "ok",
+  "service": "mizani-demo",
+  "build_step": "1-2",
+  "note": "Ingest + data-quality demonstration. Agent/MCP/ledger not deployed yet."
+}

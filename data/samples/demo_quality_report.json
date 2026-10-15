@@ -1,0 +1,79 @@
+{
+  "generated_at": "2026-10-15T09:28:43.671694+00:00",
+  "ingest_meta": {
+    "source_name": "Kenya Public Procurement Information Portal (PPIP) / PPRA",
+    "portal_url": "https://tenders.go.ke/ocds",
+    "download_date": "not-set",
+    "raw_dir": "data\\raw",
+    "sample_label": "synthetic-sample",
+    "stats_json": "{\"awards_excluded_open_tender\": 1, \"awards_excluded_person_like\": 1, \"awards_kept\": 10, \"awards_raw\": 12, \"buyers\": 9, \"currency_set\": [\"KES\"], \"duplicate_releases_dropped\": 1, \"items_kept\": 7, \"missing_buyer_name\": 1, \"missing_location\": 2, \"notes\": [], \"releases_kept\": 12, \"releases_seen\": 13, \"supplier_aliases\": 10, \"suppliers_canonical\": 8, \"tenders_excluded_open\": 1, \"tenders_kept\": 11, \"tenders_raw\": 12}"
+  },
+  "row_counts": {
+    "tenders_total": 12,
+    "tenders_kept": 11,
+    "tenders_excluded_open": 1,
+    "awards_total": 11,
+    "awards_kept": 10,
+    "awards_excluded": 1,
+    "items_kept": 7,
+    "buyers": 9,
+    "suppliers_canonical": 8,
+    "supplier_aliases": 10
+  },
+  "filters": {
+    "award_exclude_reasons": {
+      "person_like_supplier": 1
+    }
+  },
+  "missing_field_rates": {
+    "buyer_name": {
+      "count": 1,
+      "rate": 0.1
+    },
+    "buyer_id": {
+      "count": 0,
+      "rate": 0.0
+    },
+    "location": {
+      "count": 2,
+      "rate": 0.2
+    },
+    "value_amount": {
+      "count": 0,
+      "rate": 0.0
+    },
+    "supplier_key": {
+      "count": 0,
+      "rate": 0.0
+    },
+    "award_date": {
+      "count": 0,
+      "rate": 0.0
+    }
+  },
+  "place_lens": {
+    "location_coverage": 0.8,
+    "located_awards": 8,
+    "unlocated_awards": 2,
+    "note": "Coverage is the share of kept awards with county or region. Do not treat gaps as geographic patterns."
+  },
+  "value_distribution": {
+    "min": 75000.0,
+    "p01": 75000.0,
+    "median": 225800.0,
+    "p99": 48000000000.0,
+    "max": 48000000000.0,
+    "mean": 4800238540.0,
+    "extreme_outlier_count_beyond_p01_p99": 0,
+    "extreme_outlier_count_gt_100x_median": 1,
+    "note": "On small samples p01/p99 may equal min/max. gt_100x_median flags documented extremes that peer stats must winsorise."
+  },
+  "currencies": [
+    "KES"
+  ],
+  "supplier_canonicalisation": {
+    "fuzzy_merges": 0,
+    "canonical_suppliers": 8,
+    "aliases": 10
+  }
+}

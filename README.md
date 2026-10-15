@@ -10,6 +10,23 @@ awards against each other and shows where the balance is off.
 **Status:** early build — **steps 1–2 done** (repo scaffold + OCDS ingestion).
 Agent, MCP, ledger, and human gate are specified below and land in later steps.
 
+### Live demonstration
+
+| Surface | URL |
+| --- | --- |
+| **Deployed demo (GitHub Pages)** | https://nosh-thee-techy.github.io/mizani-split-bid-sentinel/ |
+| Health API | https://nosh-thee-techy.github.io/mizani-split-bid-sentinel/api/health.json |
+| Quality API | https://nosh-thee-techy.github.io/mizani-split-bid-sentinel/api/quality.json |
+| Awards API | https://nosh-thee-techy.github.io/mizani-split-bid-sentinel/api/awards.json |
+
+Local optional API (same payloads):
+
+```bash
+uv sync --extra web
+uv run uvicorn mizani.web.app:app --reload --port 8000
+# open http://127.0.0.1:8000/
+```
+
 ---
 
 ## Problem statement

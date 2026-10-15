@@ -1,0 +1,10 @@
+﻿{
+  "generated_at": "2026-10-15T11:40:00+00:00",
+  "trials_requested": 20,
+  "models_inspected": [
+    {"name": "gemma2:9b", "tools": false, "reason": "capabilities=['completion'] (no tools)"},
+    {"name": "gemma2:2b", "tools": false, "reason": "capabilities=['completion'] (no tools)"}
+  ],
+  "recommendation": null,
+  "note": "No installed model advertises tool calling. Do not recommend gemma2 for the agent planner. Pull qwen2.5:7b (or llama3.1) then re-run: uv run mizani model-check --all --trials 20"
+}

@@ -14,12 +14,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          python-version: "3.12"
       - name: Sync and demo
         run: |
-          uv sync --all-extras
+          uv sync --all-extras --python 3.12
           uv run mizani setup
           uv run mizani demo
           uv run pytest -q

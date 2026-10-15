@@ -1,0 +1,28 @@
+# SENSITIVITY MODE ONLY — NOT production legal thresholds.
+# Production `thresholds.yaml` values remain null until the Second Schedule
+# (PPADR 2020) amounts are pasted with a legal_source on every row.
+#
+# These figures are labelled synthetic/sensitivity for exploring SPLIT clustering
+# on real Kenya award data when legal matrix values are unavailable. Findings
+# produced under this file MUST carry data_caveats noting the mode.
+#
+# Confirmed (not a method threshold): direct procurement above KES 500,000 must
+# be reported to the Authority within 14 days (Regulation 90) — citation only.
+
+mode: sensitivity
+label: "SENSITIVITY — not Second Schedule; do not treat as legal"
+legal_note: >
+  Method thresholds live in the Second Schedule of the Public Procurement and
+  Asset Disposal Regulations, 2020 (LN 69/2020), referred to by Reg. 26 et al.
+  Treasury PDF was 404 at confirmation time; Kenya Law HTML cuts off before the
+  schedule. Do not invent matrix amounts.
+
+thresholds:
+  - id: sensitivity_near_500k
+    value: 500000
+    currency: KES
+    procurement_method: open
+    description: >
+      Sensitivity probe near the only confirmed KES figure in Reg. 90 reporting
+      (not a method threshold). Used only to exercise SPLIT windows on real data.
+    legal_source: "SENSITIVITY ONLY — not PPADR Second Schedule; Reg. 90 is reporting, not a method threshold"

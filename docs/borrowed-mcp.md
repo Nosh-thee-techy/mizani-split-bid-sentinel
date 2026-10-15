@@ -26,5 +26,8 @@ It already handles schema discovery and arbitrary exploratory SQL safely. Mizani
 ## Run (read-only)
 
 ```bash
-uvx mcp-server-duckdb --db-path data/processed/mizani.duckdb --readonly
+# Pin mcp<2 — latest uvx default pulls mcp 2.x and breaks list_resources.
+uvx --with "mcp>=1.0,<2" mcp-server-duckdb==1.1.0 --db-path data/processed/mizani.duckdb --readonly
 ```
+
+Licence on pin: check the installed package metadata (`uvx` cache / PyPI). Commonly MIT — confirm before submission.

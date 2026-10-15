@@ -8,14 +8,23 @@ awards against each other and shows where the balance is off.
 **Track / theme:** Governance · The Bid Box Challenge · Value for money  
 **Licence:** [Apache-2.0](LICENSE)  
 **Status:** core pipeline runnable — ingest, ledger, detectors, verifier, MCP tools,
-deterministic agent through the release gate, approval CLI, evals E1–E12.  
+deterministic agent through the release gate, approval CLI, evals E1–E12,
+verified real OCDS fetch (registry publication 147).  
 See **[BUILD_STATUS.md](BUILD_STATUS.md)** for what works, what does not, and how to continue.
 
 ### One-command demo (Windows and Linux)
 
 ```bash
 uv sync --all-extras
-uv run mizani demo
+uv run mizani demo          # synthetic sample
+uv run mizani demo --real   # uses data/raw/real (or real_sample/) if present
+```
+
+Real pull (never invents URLs; refuses unless `config/sources.yaml` has `verified: true`):
+
+```bash
+uv run mizani fetch --year 2026
+uv run mizani ingest --raw-dir data/raw/real_sample --db data/processed/mizani_real.duckdb --quality-out data/processed/data_quality_report_real.json
 ```
 
 Then (human only — not available to the agent):
@@ -30,10 +39,12 @@ uv run mizani ledger verify
 
 | Surface | URL |
 | --- | --- |
-| **Deployed demo (GitHub Pages)** | https://nosh-thee-techy.github.io/mizani-split-bid-sentinel/ |
+| **Static demo (GitHub Pages)** | https://nosh-thee-techy.github.io/mizani-split-bid-sentinel/ |
 | Health API | https://nosh-thee-techy.github.io/mizani-split-bid-sentinel/api/health.json |
 | Quality API | https://nosh-thee-techy.github.io/mizani-split-bid-sentinel/api/quality.json |
 | Awards API | https://nosh-thee-techy.github.io/mizani-split-bid-sentinel/api/awards.json |
+
+The Pages site is a **static** snapshot of ingest/quality payloads — not a live agent.
 
 Local optional API (same payloads):
 
@@ -54,7 +65,7 @@ by hand:
 | Pattern | What goes wrong |
 | --- | --- |
 | **Tender splitting** | One purchase is broken into several smaller awards, each just under the value that triggers a competitive method |
-| **Price outliers** | The same kind of item is bought at a unit price far from what peers paid, with no stated reason |
+| **Price / value outliers** | On item-rich (synthetic) data: unit price far from peers. On real Kenya PPRA bulk: **award value** far from peers in the same category + method — the registry has zero tender items/units, so unit-price mode cannot run |
 | **Repeat-winner concentration** | One supplier takes an unusual share of a buyer's awards in one category |
 
 Kenya's portals publish what was **tendered** and **awarded**, not the bids
@@ -84,11 +95,15 @@ returns a short brief in which **every finding cites the award records behind it
 | Type | What it flags |
 | --- | --- |
 | `SPLIT` | Several awards to one supplier from one buyer in one category, each just under a threshold, close in time |
-| `PRICE` | A unit price far from the peer distribution for the same item and unit |
+| `PRICE` | **Two modes:** (1) `unit_price` — synthetic / item+unit fixtures only; (2) `value_benchmark` — real Kenya data, labelled **"value benchmark within category"** (never "unit price") |
 | `CONCENTRATION` | One supplier holding an unusual share of a buyer's awards in a category |
 
-Supporting views: **accountability gap** (award vs tender estimate) and **place
-lens** (findings by county/buyer with a coverage warning).
+Supporting views: **accountability gap** (award vs tender estimate).
+
+**Place lens is out for real Kenya PPRA bulk.** On the registry-147 sample,
+**LOCATION COVERAGE = 0.0% (0 of 341 awards in the 2026 head; still 0.0% on the
+combined 2025+2026 head with 2 200 kept awards)**. We do not claim geographic
+patterns. Synthetic fixtures still have locations for detector tests only.
 
 ### What it will not do
 
@@ -194,7 +209,7 @@ Borrowed server documented in `docs/borrowed-mcp.md` (`mcp-server-duckdb`, read-
 | --- | --- | --- |
 | `search_awards` | read | None |
 | `cluster_threshold_awards` | analysis (SPLIT) | None |
-| `benchmark_unit_price` | analysis (PRICE) | None |
+| `benchmark_unit_price` | analysis (PRICE) | Auto-switches to **value benchmark within category** when items are absent (real Kenya bulk); unit-price mode is for synthetic fixtures only |
 | `profile_supplier` | analysis (CONCENTRATION) | None |
 | `verify_finding` | check | Ledger entry |
 | `draft_committee_brief` | **action** | Writes DRAFT brief + ledger; does **not** release |
@@ -228,7 +243,7 @@ Approval is **not** an MCP tool and is not reachable by the model.
 
 ## Setup / installation
 
-**Requirements:** Python 3.11+, [uv](https://github.com/astral-sh/uv), Git.
+**Requirements:** Python `>=3.11,<3.14` (pinned `.python-version` **3.12**), [uv](https://github.com/astral-sh/uv), Git.
 
 ```bash
 git clone https://github.com/Nosh-thee-techy/mizani-split-bid-sentinel.git
@@ -245,28 +260,27 @@ Ollama and the MCP / LangGraph demo path will be documented when those steps lan
 
 ## Usage instructions
 
-### What works today (steps 1–2)
+### What works today
 
 ```bash
-# Copy the labelled synthetic sample (not real PPIP data)
-mkdir -p data/raw
-cp data/samples/synthetic_kenya_shaped.jsonl data/raw/
+# Synthetic path
+uv run mizani demo
 
-# Ingest into DuckDB and write a data-quality report
-uv run mizani ingest --raw-dir data/raw --sample-label synthetic-sample
-uv run mizani quality
+# Real OCDS (registry publication 147 — see config/sources.yaml)
+uv run mizani fetch --year 2026
+uv run mizani demo --real
 
-# Run tests
+# Quality report on an existing DuckDB
+uv run mizani quality --db data/processed/mizani_real.duckdb --out data/processed/data_quality_report_real.json
+
+# Tests use recorded fixtures only (no network)
 uv run pytest -q
 ```
 
-### Planned agent run (later)
+Real vs synthetic surprises: `data/processed/real_vs_synthetic_surprises.md`.
 
-```bash
-make demo
-# then: mizani approve --brief <path> --approver "Name"
-# then: mizani ledger verify
-```
+**PRICE modes:** unit-price = synthetic/item fixtures only; real Kenya bulk uses
+value-benchmark (label: "value benchmark within category").
 
 ---
 
@@ -274,17 +288,17 @@ make demo
 
 | Area | Choice |
 | --- | --- |
-| Language | Python 3.11+ |
+| Language | Python ≥3.11,<3.14 (dev pin 3.12) |
 | Env / packaging | uv, hatchling |
 | Analysis DB | DuckDB |
 | Models / validation | Pydantic v2 |
-| Orchestration | LangGraph (planned) |
-| Own MCP | Official Python MCP SDK (planned) |
-| Borrowed MCP | Community SQL MCP over DuckDB (planned) |
-| Local LLM | Ollama + open-weights tool-calling model (planned) |
+| Orchestration | LangGraph (compiled graph + deterministic fallback) |
+| Own MCP | Official Python MCP SDK (`mizani-mcp`) |
+| Borrowed MCP | `mcp-server-duckdb` read-only (see docs/borrowed-mcp.md) |
+| Local LLM | Ollama + open-weights (model-check scored; planner optional) |
 | CLI | Typer + Rich |
 | Name matching | rapidfuzz |
-| Ledger | SQLite hash chain (planned) |
+| Ledger | SQLite hash chain |
 | Lint / test | ruff, pytest |
 
 ---
@@ -293,17 +307,19 @@ make demo
 
 - Reads **awards**, not bids — cannot judge bid quality.
 - Findings are **indicators**, not proof of wrongdoing.
-- Results depend on data completeness and on **correct legal thresholds**
-  (`config/thresholds.yaml` is still placeholder `null` until filled from
-  Kenyan regulations with a `legal_source`).
-- Location fields may be sparse; place lens always shows **coverage** first.
+- Results depend on data completeness and on **correct legal thresholds**.
+  `config/thresholds.yaml` stays **null** until Second Schedule (PPADR 2020)
+  amounts are pasted with a `legal_source` on every row. Real-data SPLIT may run
+  only in clearly labelled **sensitivity** mode (`config/thresholds_sensitivity.yaml`)
+  — not as production law.
+- **LOCATION COVERAGE = 0.0%** on real registry data — place lens disabled for
+  real briefs; no geographic claims.
 - Framework agreements can look like splits; listed as a benign explanation;
   admitted failures go in `EVALS.md`.
 - Open-weights models may fumble tool calls; schemas stay small with re-prompt.
-- Open-weights **tool-calling agent loop** not fully proven on local models yet
-  (deterministic demo path works; run `mizani model-check`).
-- Real PPIP bulk data not pulled until `config/sources.yaml` is verified.
-- Legal thresholds still null — SPLIT on real briefs needs regulations filled in.
+  Default planner becomes Ollama only after `mizani model-check` recovery >50%;
+  otherwise `--planner deterministic` (also used in tests).
+- Real OCDS: registry publication **147** via `mizani fetch` (2025 + 2026).
 
 ---
 

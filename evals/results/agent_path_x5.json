@@ -1,0 +1,95 @@
+{
+  "note": "Agent-path x5 with deterministic planner \u2014 Ollama tool model pull still blocked by network",
+  "status_counts": {
+    "awaiting_approval": 5
+  },
+  "runs": [
+    {
+      "repeat": 0,
+      "status": "awaiting_approval",
+      "planner_mode": "deterministic",
+      "model_name": "deterministic",
+      "verified": 1,
+      "dropped": 0,
+      "brief_id": "brief_20261015_175633",
+      "mcp_sql_ok": false,
+      "mcp_borrowed_sql": {
+        "error": "Connection closed"
+      },
+      "duration_ms": 18488
+    },
+    {
+      "repeat": 1,
+      "status": "awaiting_approval",
+      "planner_mode": "deterministic",
+      "model_name": "deterministic",
+      "verified": 1,
+      "dropped": 0,
+      "brief_id": "brief_20261015_175639",
+      "mcp_sql_ok": false,
+      "mcp_borrowed_sql": {
+        "error": "Connection closed"
+      },
+      "duration_ms": 6436
+    },
+    {
+      "repeat": 2,
+      "status": "awaiting_approval",
+      "planner_mode": "deterministic",
+      "model_name": "deterministic",
+      "verified": 1,
+      "dropped": 0,
+      "brief_id": "brief_20261015_175645",
+      "mcp_sql_ok": false,
+      "mcp_borrowed_sql": {
+        "error": "Connection closed"
+      },
+      "duration_ms": 5890
+    },
+    {
+      "repeat": 3,
+      "status": "awaiting_approval",
+      "planner_mode": "deterministic",
+      "model_name": "deterministic",
+      "verified": 1,
+      "dropped": 0,
+      "brief_id": "brief_20261015_175659",
+      "mcp_sql_ok": false,
+      "mcp_borrowed_sql": {
+        "error": "Connection closed"
+      },
+      "duration_ms": 13400
+    },
+    {
+      "repeat": 4,
+      "status": "awaiting_approval",
+      "planner_mode": "deterministic",
+      "model_name": "deterministic",
+      "verified": 1,
+      "dropped": 0,
+      "brief_id": "brief_20261015_175712",
+      "mcp_sql_ok": false,
+      "mcp_borrowed_sql": {
+        "error": "Connection closed"
+      },
+      "duration_ms": 12797
+    }
+  ],
+  "variation": {
+    "verified_counts": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "durations_ms": [
+      18488,
+      6436,
+      5890,
+      13400,
+      12797
+    ],
+    "mcp_sql_ok_rate": 0.0
+  }
+}

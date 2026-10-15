@@ -8,7 +8,9 @@ Mizani prepares cited procurement briefs from Kenya OCDS **award** data. The mod
 plan -> investigate -> verify -> draft -> release_gate (interrupt)
 ```
 
-- **plan** — structured buyer/category/window (deterministic parser today; LLM-ready).
+- **plan** — structured buyer/category/window via compiled LangGraph `StateGraph`.
+  Default planner is **deterministic**; optional Ollama JSON plan (`planner_mode=ollama`)
+  only after `mizani model-check` recommends a tool-capable model.
 - **investigate** — `search_awards` + detectors; widens filters up to twice on empty results.
 - **verify** — independent recomputation from record IDs; failures become DROPPED.
 - **draft** — writes a **DRAFT** brief only.
@@ -33,4 +35,7 @@ SQLite hash chain (`data/processed/evidence_ledger.sqlite`). Every tool call is 
 
 ## Data
 
-DuckDB analysis DB from OCDS ingest. Synthetic sample ships in-repo; real PPIP pull waits on confirmed `config/sources.yaml` (`verified: true`).
+DuckDB analysis DB from OCDS ingest. Synthetic sample ships in-repo. Real Kenya
+PPRA bulk is fetched only from OCP Data Registry publication **147**
+(`config/sources.yaml` `verified: true`). Real data has **zero tender items**,
+so PRICE uses **value benchmark within category** (never unit-price).

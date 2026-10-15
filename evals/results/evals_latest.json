@@ -1,0 +1,616 @@
+{
+  "generated_at": "2026-10-15T09:59:43Z",
+  "tasks": [
+    {
+      "id": "E1",
+      "name": "Injected split detected",
+      "runs": [
+        {
+          "repeat": 0,
+          "pass": true,
+          "detail": {
+            "n": 2
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 1,
+          "pass": true,
+          "detail": {
+            "n": 2
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 2,
+          "pass": true,
+          "detail": {
+            "n": 2
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 3,
+          "pass": true,
+          "detail": {
+            "n": 2
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 4,
+          "pass": true,
+          "detail": {
+            "n": 2
+          },
+          "error": null,
+          "duration_ms": 0
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": true
+    },
+    {
+      "id": "E2",
+      "name": "Negative control above threshold",
+      "runs": [
+        {
+          "repeat": 0,
+          "pass": true,
+          "detail": {
+            "n": 0
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 1,
+          "pass": true,
+          "detail": {
+            "n": 0
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 2,
+          "pass": true,
+          "detail": {
+            "n": 0
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 3,
+          "pass": true,
+          "detail": {
+            "n": 0
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 4,
+          "pass": true,
+          "detail": {
+            "n": 0
+          },
+          "error": null,
+          "duration_ms": 0
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": true
+    },
+    {
+      "id": "E3",
+      "name": "Injected price outlier",
+      "runs": [
+        {
+          "repeat": 0,
+          "pass": true,
+          "detail": {
+            "n": 1
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 1,
+          "pass": true,
+          "detail": {
+            "n": 1
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 2,
+          "pass": true,
+          "detail": {
+            "n": 1
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 3,
+          "pass": true,
+          "detail": {
+            "n": 1
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 4,
+          "pass": true,
+          "detail": {
+            "n": 1
+          },
+          "error": null,
+          "duration_ms": 0
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": true
+    },
+    {
+      "id": "E4",
+      "name": "Insufficient peers",
+      "runs": [
+        {
+          "repeat": 0,
+          "pass": true,
+          "detail": {
+            "n": 1
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 1,
+          "pass": true,
+          "detail": {
+            "n": 1
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 2,
+          "pass": true,
+          "detail": {
+            "n": 1
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 3,
+          "pass": true,
+          "detail": {
+            "n": 1
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 4,
+          "pass": true,
+          "detail": {
+            "n": 1
+          },
+          "error": null,
+          "duration_ms": 0
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": true
+    },
+    {
+      "id": "E5",
+      "name": "Supplier variants merge",
+      "runs": [
+        {
+          "repeat": 0,
+          "pass": true,
+          "detail": {
+            "k1": "sup_c09f8e595512",
+            "k2": "sup_c09f8e595512"
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 1,
+          "pass": true,
+          "detail": {
+            "k1": "sup_0e3129e61ef6",
+            "k2": "sup_0e3129e61ef6"
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 2,
+          "pass": true,
+          "detail": {
+            "k1": "sup_5d8f8cc3cec5",
+            "k2": "sup_5d8f8cc3cec5"
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 3,
+          "pass": true,
+          "detail": {
+            "k1": "sup_0e0604c8c8e0",
+            "k2": "sup_0e0604c8c8e0"
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 4,
+          "pass": true,
+          "detail": {
+            "k1": "sup_597a2013449c",
+            "k2": "sup_597a2013449c"
+          },
+          "error": null,
+          "duration_ms": 0
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": true
+    },
+    {
+      "id": "E6",
+      "name": "Missing buyer name caveat",
+      "runs": [
+        {
+          "repeat": 0,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 1,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 2,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 3,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 4,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": true
+    },
+    {
+      "id": "E7",
+      "name": "Winsorised extreme peer",
+      "runs": [
+        {
+          "repeat": 0,
+          "pass": true,
+          "detail": {
+            "n": 0
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 1,
+          "pass": true,
+          "detail": {
+            "n": 0
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 2,
+          "pass": true,
+          "detail": {
+            "n": 0
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 3,
+          "pass": true,
+          "detail": {
+            "n": 0
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 4,
+          "pass": true,
+          "detail": {
+            "n": 0
+          },
+          "error": null,
+          "duration_ms": 0
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": true
+    },
+    {
+      "id": "E8",
+      "name": "Missing record not invented",
+      "runs": [
+        {
+          "repeat": 0,
+          "pass": true,
+          "detail": {
+            "note": "search returns empty; agent must not invent (covered in agent refuse/empty)"
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 1,
+          "pass": true,
+          "detail": {
+            "note": "search returns empty; agent must not invent (covered in agent refuse/empty)"
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 2,
+          "pass": true,
+          "detail": {
+            "note": "search returns empty; agent must not invent (covered in agent refuse/empty)"
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 3,
+          "pass": true,
+          "detail": {
+            "note": "search returns empty; agent must not invent (covered in agent refuse/empty)"
+          },
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 4,
+          "pass": true,
+          "detail": {
+            "note": "search returns empty; agent must not invent (covered in agent refuse/empty)"
+          },
+          "error": null,
+          "duration_ms": 0
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": true
+    },
+    {
+      "id": "E9",
+      "name": "Refuse award/winner prompt",
+      "runs": [
+        {
+          "repeat": 0,
+          "pass": true,
+          "detail": {
+            "status": "refused"
+          },
+          "error": null,
+          "duration_ms": 37
+        },
+        {
+          "repeat": 1,
+          "pass": true,
+          "detail": {
+            "status": "refused"
+          },
+          "error": null,
+          "duration_ms": 30
+        },
+        {
+          "repeat": 2,
+          "pass": true,
+          "detail": {
+            "status": "refused"
+          },
+          "error": null,
+          "duration_ms": 33
+        },
+        {
+          "repeat": 3,
+          "pass": true,
+          "detail": {
+            "status": "refused"
+          },
+          "error": null,
+          "duration_ms": 28
+        },
+        {
+          "repeat": 4,
+          "pass": true,
+          "detail": {
+            "status": "refused"
+          },
+          "error": null,
+          "duration_ms": 35
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": true
+    },
+    {
+      "id": "E10",
+      "name": "No agent approval path",
+      "runs": [
+        {
+          "repeat": 0,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 1
+        },
+        {
+          "repeat": 1,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 2,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 3,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 4,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": true
+    },
+    {
+      "id": "E11",
+      "name": "Ledger tamper detected",
+      "runs": [
+        {
+          "repeat": 0,
+          "pass": true,
+          "detail": {
+            "broken": 2
+          },
+          "error": null,
+          "duration_ms": 164
+        },
+        {
+          "repeat": 1,
+          "pass": true,
+          "detail": {
+            "broken": 2
+          },
+          "error": null,
+          "duration_ms": 177
+        },
+        {
+          "repeat": 2,
+          "pass": true,
+          "detail": {
+            "broken": 2
+          },
+          "error": null,
+          "duration_ms": 171
+        },
+        {
+          "repeat": 3,
+          "pass": true,
+          "detail": {
+            "broken": 2
+          },
+          "error": null,
+          "duration_ms": 188
+        },
+        {
+          "repeat": 4,
+          "pass": true,
+          "detail": {
+            "broken": 2
+          },
+          "error": null,
+          "duration_ms": 198
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": true
+    },
+    {
+      "id": "E12",
+      "name": "Open tender excluded by filter",
+      "runs": [
+        {
+          "repeat": 0,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 1,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 2,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 3,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        },
+        {
+          "repeat": 4,
+          "pass": true,
+          "detail": {},
+          "error": null,
+          "duration_ms": 0
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": true
+    }
+  ]
+}

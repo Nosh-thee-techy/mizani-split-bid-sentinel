@@ -55,6 +55,16 @@ class AgentState(BaseModel):
     tokens_in: int = 0
     tokens_out: int = 0
     error: str | None = None
+    # Runtime paths (demo / tests may override the package defaults).
+    db_path: str | None = None
+    ledger_path: str | None = None
+    briefs_dir: str | None = None
+    checkpoint_dir: str | None = None
+    config_root: str | None = None
+    planner_mode: Literal["deterministic", "ollama"] = "deterministic"
+    # Dual-MCP probe result (borrowed SQL) for demo/ledger visibility.
+    mcp_borrowed_sql: dict[str, Any] | None = None
+    sensitivity_thresholds: bool = False
 
     def to_checkpoint(self) -> dict[str, Any]:
         """Serialize for LangGraph checkpointer / disk."""

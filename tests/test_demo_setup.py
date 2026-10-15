@@ -28,9 +28,10 @@ def test_demo_exits_zero_in_temp_copy(tmp_path: Path) -> None:
     # Minimal clean tree: copy configs + sample + package is importable from src.
     for rel in ("config", "data/samples"):
         shutil.copytree(ROOT / rel, tmp_path / rel)
-    summary = run_demo(root=tmp_path, use_real=False)
+    summary = run_demo(root=tmp_path, use_real=False, planner="deterministic")
     assert summary["ledger_ok"] is True
     assert summary["awards_kept"] >= 1
+    assert summary.get("planner_mode") == "deterministic"
 
 
 def test_cli_demo_help() -> None:

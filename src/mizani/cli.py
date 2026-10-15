@@ -28,6 +28,34 @@ DEFAULT_LEDGER = ROOT / "data" / "processed" / "evidence_ledger.sqlite"
 
 
 
+@app.command("fetch")
+def fetch_cmd(
+    year: int = typer.Option(..., "--year", help="Registry year file, e.g. 2026"),
+    sources: Path = typer.Option(
+        ROOT / "config" / "sources.yaml",
+        "--sources",
+        help="Sources YAML (must have verified: true)",
+    ),
+    out_dir: Path = typer.Option(
+        ROOT / "data" / "raw" / "real",
+        "--out-dir",
+        help="Destination directory (git-ignored)",
+    ),
+) -> None:
+    """Download a verified OCDS year file from the OCP Data Registry (never overwrites)."""
+    from mizani.ingest.fetch import FetchError, fetch_year
+
+    try:
+        prov = fetch_year(year=year, sources_path=sources, raw_real_dir=out_dir)
+    except FetchError as exc:
+        console.print(str(exc))
+        raise typer.Exit(code=1) from exc
+    console.print(f"Downloaded {prov['filename']}")
+    console.print(f"JSONL: {prov['jsonl']} ({prov['size_jsonl_bytes']} bytes)")
+    console.print(f"sha256_jsonl: {prov['sha256_jsonl']}")
+    console.print(f"provenance written beside the file under {out_dir}")
+
+
 @app.command("ingest")
 def ingest_cmd(
     raw_dir: Path = typer.Option(
@@ -134,15 +162,28 @@ def _print_quality_summary(report: dict) -> None:
     table.add_row("Items kept", str(counts["items_kept"]))
     table.add_row("Buyers", str(counts["buyers"]))
     table.add_row("Canonical suppliers", str(counts["suppliers_canonical"]))
-    coverage = report["place_lens"]["location_coverage"]
+    place = report["place_lens"]
+    coverage = place["location_coverage"]
+    pct = place.get("location_coverage_pct_display")
     table.add_row(
-        "Location coverage",
-        "n/a" if coverage is None else f"{coverage:.1%}",
+        "LOCATION COVERAGE (county|region)",
+        "n/a" if coverage is None else f"{pct}% ({place['located_awards']}/{counts['awards_kept']})",
     )
-    missing = report["missing_field_rates"]
+    presence = report.get("presence_rates") or {}
+    for key, label in (
+        ("buyer_name", "Presence buyer name"),
+        ("award_value", "Presence award value"),
+        ("tender_estimate_value", "Presence tender estimate"),
+        ("supplier_id", "Presence supplier ID"),
+        ("any_delivery_location", "Presence any delivery location"),
+    ):
+        val = presence.get(key)
+        table.add_row(label, "n/a" if val is None else f"{val:.1%}")
+    real = report.get("real_data_checks") or {}
+    inv = real.get("invalid_or_missing_supplier_id_schemes") or {}
     table.add_row(
-        "Missing buyer name (kept awards)",
-        f"{missing['buyer_name']['count']} ({missing['buyer_name']['rate']})",
+        "Invalid/missing supplier ID schemes",
+        f"{inv.get('count', 0)} ({inv.get('rate')})",
     )
     table.add_row(
         "Value outliers beyond p01/p99",
@@ -152,7 +193,19 @@ def _print_quality_summary(report: dict) -> None:
         "Value outliers >100x median",
         str(report["value_distribution"].get("extreme_outlier_count_gt_100x_median", 0)),
     )
+    table.add_row("Currencies", ", ".join(report.get("currencies") or []) or "(none)")
+    table.add_row("Open tenders excluded", str(report.get("open_tenders_excluded", 0)))
+    table.add_row(
+        "Unit-price possible (items>0)",
+        str(real.get("unit_price_possible", counts["items_kept"] > 0)),
+    )
     console.print(table)
+    if coverage is not None:
+        console.print(
+            f"[bold]LOCATION COVERAGE = {pct}%[/bold] "
+            f"({place['located_awards']} located / {counts['awards_kept']} kept awards). "
+            "Do not treat gaps as geographic patterns."
+        )
     console.print_json(json.dumps(report, indent=2))
 
 
@@ -191,12 +244,27 @@ def demo_cmd(
         "--real",
         help="Use data/raw/real if present (requires confirmed source)",
     ),
+    planner: str = typer.Option(
+        "auto",
+        "--planner",
+        help="auto | ollama | deterministic (deterministic forced for tests)",
+    ),
+    model: Optional[str] = typer.Option(
+        None,
+        "--model",
+        help="Ollama model tag when planner is ollama/auto",
+    ),
 ) -> None:
     """Run the cross-platform demo through the human release gate."""
     from mizani.demo_flow import run_demo
 
     try:
-        summary = run_demo(root=ROOT, use_real=real)
+        summary = run_demo(
+            root=ROOT,
+            use_real=real,
+            planner=planner,
+            model_name=model,
+        )
     except FileNotFoundError as exc:
         console.print(str(exc))
         raise typer.Exit(code=1) from exc
@@ -205,11 +273,14 @@ def demo_cmd(
         raise typer.Exit(code=1) from exc
 
     console.print("Demo complete.")
+    console.print(f"planner: {summary.get('planner_mode')}")
+    console.print(f"model: {summary.get('model_name')}")
     console.print(f"run_id: {summary['run_id']}")
     console.print(f"awards_kept: {summary.get('awards_kept')}")
     console.print(f"agent_status: {summary.get('agent_status')}")
     console.print(f"brief: {summary.get('brief_path')}")
     console.print(f"verified_findings: {summary.get('verified_findings')}")
+    console.print(f"mcp_borrowed_sql: {summary.get('mcp_borrowed_sql')}")
     console.print(f"ledger: {summary['ledger_message']}")
     console.print(f"quality: {summary['quality_report']}")
     console.print(
@@ -268,14 +339,24 @@ def reject_cmd(
 
 @app.command("model-check")
 def model_check_cmd(
-    model: str = typer.Option(..., "--model", help="Ollama model name"),
-    trials: int = typer.Option(20, "--trials"),
+    model: Optional[str] = typer.Option(
+        None,
+        "--model",
+        help="Ollama model name, or omit with --all to score every tool-capable model",
+    ),
+    trials: int = typer.Option(20, "--trials", help="Total trials across 4 scenarios"),
+    all_models: bool = typer.Option(False, "--all", help="Score all tool-capable installed models"),
 ) -> None:
-    """Smoke-test open-weights tool calling via Ollama before relying on the agent."""
+    """Score open-weights tool calling via Ollama (Prompt 6b)."""
     from mizani.model_check import run_model_check
 
     try:
-        path = run_model_check(model=model, trials=trials, root=ROOT)
+        path = run_model_check(
+            model=model,
+            trials=trials,
+            root=ROOT,
+            all_installed=all_models or model is None,
+        )
     except RuntimeError as exc:
         console.print(str(exc))
         raise typer.Exit(code=1) from exc

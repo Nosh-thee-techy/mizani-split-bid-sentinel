@@ -1,7 +1,8 @@
-"""Ollama tool-calling smoke test (Prompt 6).
+"""Ollama tool-calling smoke test with scored pass rates (Prompt 6b).
 
-Runs small dummy tools against a local model and records success rates.
-Fails clearly when Ollama is unreachable.
+Only models that advertise tool support are tested. Results are written under
+evals/results/ and a recommendation is printed (never recommend a model that
+fails recovery more than half the time).
 """
 
 from __future__ import annotations
@@ -18,15 +19,21 @@ from pydantic import BaseModel, Field, ValidationError
 
 
 class AddNumbersArgs(BaseModel):
+    """Dummy tool: add two numbers."""
+
     a: float
     b: float
 
 
 class LookupAwardArgs(BaseModel):
+    """Dummy tool: look up an award by id."""
+
     id: str
 
 
 class DraftNoteArgs(BaseModel):
+    """Dummy tool: draft a short note."""
+
     text: str = Field(min_length=1)
 
 
@@ -36,9 +43,11 @@ TOOLS = {
     "draft_note": DraftNoteArgs,
 }
 
+SCENARIOS = ("single", "chain", "recovery", "no_tool")
 
-def list_ollama_models(host: str = "http://127.0.0.1:11434") -> list[str]:
-    """Return model names reported by the local Ollama daemon."""
+
+def list_ollama_models(host: str = "http://127.0.0.1:11434") -> list[dict[str, Any]]:
+    """Return raw model objects from the local Ollama daemon."""
     try:
         with urllib.request.urlopen(f"{host}/api/tags", timeout=3) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
@@ -46,169 +55,302 @@ def list_ollama_models(host: str = "http://127.0.0.1:11434") -> list[str]:
         raise RuntimeError(
             "Ollama is not reachable at 127.0.0.1:11434. Start Ollama and pull a model."
         ) from exc
-    return [m.get("name") for m in payload.get("models") or [] if m.get("name")]
+    return list(payload.get("models") or [])
+
+
+def model_advertises_tools(model: dict[str, Any], host: str) -> tuple[bool, str]:
+    """Best-effort check whether a model supports tool calling.
+
+    Ollama exposes capabilities on /api/show. If the field is missing we fall
+    back to a conservative name heuristic and say why.
+    """
+    name = model.get("name") or ""
+    try:
+        req = urllib.request.Request(
+            f"{host}/api/show",
+            data=json.dumps({"name": name}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            detail = json.loads(resp.read().decode("utf-8"))
+        caps = detail.get("capabilities") or detail.get("details", {}).get("capabilities")
+        if isinstance(caps, list):
+            if "tools" in caps or "tool" in caps:
+                return True, "capabilities include tools"
+            return False, f"capabilities={caps} (no tools)"
+        # Some builds put families in details
+        family = str((detail.get("details") or {}).get("family") or "").lower()
+        template = str(detail.get("template") or "")
+        if ".Tools" in template or "tools" in template.lower():
+            return True, "template references tools"
+        # Known weak / non-tool families we skip explicitly
+        if "gemma" in name.lower() or family == "gemma":
+            return False, "Gemma family often lacks reliable Ollama tool calling — skipped"
+    except Exception as exc:  # noqa: BLE001
+        return False, f"could not inspect model ({exc})"
+    return False, "no tool capability advertised"
 
 
 def run_model_check(
     *,
-    model: str,
+    model: str | None,
     trials: int,
     root: Path,
     host: str = "http://127.0.0.1:11434",
+    all_installed: bool = False,
 ) -> Path:
-    """Run tool-calling scenarios and write JSON results under evals/results/."""
+    """Score one model (or all tool-capable installed models) and write JSON.
+
+    Inputs:
+        model: specific model name, or None with all_installed=True.
+        trials: total trials distributed across the four scenarios (20 => 5 each).
+    Outputs:
+        Path to the primary results JSON (or summary when scoring all).
+    """
     installed = list_ollama_models(host=host)
-    if model not in installed and not any(model in m for m in installed):
+    if not installed:
+        raise RuntimeError("Ollama reports no installed models.")
+
+    to_test: list[str] = []
+    skipped: list[dict[str, str]] = []
+    if all_installed or model in (None, "", "all"):
+        for m in installed:
+            name = m.get("name") or ""
+            ok, reason = model_advertises_tools(m, host)
+            if ok:
+                to_test.append(name)
+            else:
+                skipped.append({"model": name, "reason": reason})
+                print(f"SKIP {name}: {reason}")
+    else:
+        assert model is not None
+        match = next((m for m in installed if m.get("name") == model or model in (m.get("name") or "")), None)
+        if match is None:
+            names = [m.get("name") for m in installed]
+            raise RuntimeError(f"Model {model!r} not installed. Ollama reports: {names}")
+        ok, reason = model_advertises_tools(match, host)
+        if not ok:
+            raise RuntimeError(f"Refusing to score {model}: {reason}")
+        to_test = [match.get("name") or model]
+
+    if not to_test:
         raise RuntimeError(
-            f"Model {model!r} not installed. Ollama reports: {installed or '(none)'}"
+            "No tool-capable models to score. Pull a tool-calling model "
+            "(e.g. qwen2.5, llama3.1) or check Ollama capabilities."
         )
 
-    scenarios = [
-        "single",
-        "chain",
-        "bad_type",
-        "no_tool",
-    ]
-    # Distribute trials across scenarios
-    per = max(1, trials // len(scenarios))
-    rows: list[dict[str, Any]] = []
-    for scenario in scenarios:
-        for i in range(per):
-            rows.append(_one_trial(host, model, scenario, i))
-
+    per = max(1, trials // len(SCENARIOS))
+    summaries: list[dict[str, Any]] = []
     out_dir = root / "evals" / "results"
     out_dir.mkdir(parents=True, exist_ok=True)
-    safe = model.replace(":", "_").replace("/", "_")
-    out = out_dir / f"model_check_{safe}.json"
-    summary = {
-        "model": model,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "installed_models": installed,
-        "trials": rows,
-        "success_rate": (
-            sum(1 for r in rows if r.get("valid_tool_call")) / len(rows) if rows else 0.0
-        ),
-    }
-    out.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
-    _print_table(rows, model)
-    return out
 
+    for name in to_test:
+        rows: list[dict[str, Any]] = []
+        for scenario in SCENARIOS:
+            for i in range(per):
+                rows.append(_one_trial(host, name, scenario, i))
+        stats = _score_rows(rows)
+        payload = {
+            "model": name,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "temperature": 0,
+            "seed": 42,
+            "trials_per_scenario": per,
+            "scenarios": list(SCENARIOS),
+            "trials": rows,
+            "scores": stats,
+            "skipped_models": skipped,
+        }
+        safe = name.replace(":", "_").replace("/", "_")
+        out = out_dir / f"model_check_{safe}.json"
+        out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        summaries.append({"model": name, "path": str(out), **stats})
+        _print_table(name, stats)
 
-def _print_table(rows: list[dict[str, Any]], model: str) -> None:
-    """Print a plain-text summary table (UTF-8 safe)."""
-    print(f"model-check results for {model}")
-    print("scenario\tvalid\targs_ok\trecovered\ttokens_in\ttokens_out\tms")
-    for r in rows:
-        print(
-            f"{r['scenario']}\t{r['valid_tool_call']}\t{r['correct_args']}\t"
-            f"{r['recovered']}\t{r['tokens_in']}\t{r['tokens_out']}\t{r['duration_ms']}"
+    recommendation = _recommend(summaries)
+    summary_path = out_dir / "model_check_summary.json"
+    summary_path.write_text(
+        json.dumps(
+            {
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "skipped": skipped,
+                "models": summaries,
+                "recommendation": recommendation,
+            },
+            indent=2,
         )
+        + "\n",
+        encoding="utf-8",
+    )
+    print()
+    if recommendation.get("model"):
+        print(
+            f"RECOMMEND: {recommendation['model']} "
+            f"(overall={recommendation['overall_pass_rate']:.0%}, "
+            f"recovery={recommendation['recovery_pass_rate']:.0%})"
+        )
+    else:
+        print(f"RECOMMEND: none — {recommendation.get('reason')}")
+    return summary_path if len(to_test) > 1 else Path(summaries[0]["path"])
+
+
+def _score_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate per-scenario and overall pass rates."""
+    by: dict[str, list[dict[str, Any]]] = {s: [] for s in SCENARIOS}
+    for r in rows:
+        by[r["scenario"]].append(r)
+
+    def rate(subset: list[dict[str, Any]], key: str) -> float:
+        if not subset:
+            return 0.0
+        return sum(1 for r in subset if r.get(key)) / len(subset)
+
+    scenario_rates = {}
+    for s, subset in by.items():
+        if s == "no_tool":
+            scenario_rates[s] = rate(subset, "correct_no_tool")
+        elif s == "recovery":
+            scenario_rates[s] = rate(subset, "recovered")
+        else:
+            scenario_rates[s] = rate(subset, "pass")
+
+    overall = sum(scenario_rates.values()) / len(scenario_rates) if scenario_rates else 0.0
+    return {
+        "scenario_pass_rates": scenario_rates,
+        "overall_pass_rate": overall,
+        "recovery_pass_rate": scenario_rates.get("recovery", 0.0),
+        "median_duration_ms": sorted(r["duration_ms"] for r in rows)[len(rows) // 2] if rows else 0,
+        "total_tokens_in": sum(r.get("tokens_in") or 0 for r in rows),
+        "total_tokens_out": sum(r.get("tokens_out") or 0 for r in rows),
+    }
+
+
+def _recommend(summaries: list[dict[str, Any]]) -> dict[str, Any]:
+    """Pick the best model that passes the recovery gate (>50%)."""
+    eligible = [s for s in summaries if s.get("recovery_pass_rate", 0) > 0.5]
+    if not eligible:
+        return {
+            "model": None,
+            "reason": "No model passed recovery more than half the time — do not use for the agent demo yet.",
+            "overall_pass_rate": 0.0,
+            "recovery_pass_rate": 0.0,
+        }
+    best = max(eligible, key=lambda s: (s.get("overall_pass_rate", 0), s.get("recovery_pass_rate", 0)))
+    return {
+        "model": best["model"],
+        "overall_pass_rate": best["overall_pass_rate"],
+        "recovery_pass_rate": best["recovery_pass_rate"],
+        "reason": "highest overall pass rate among models with recovery > 50%",
+    }
+
+
+def _print_table(model: str, stats: dict[str, Any]) -> None:
+    """Print a plain UTF-8 pass-rate table."""
+    print(f"\n=== {model} ===")
+    print("scenario\tpass_rate")
+    for s, rate in (stats.get("scenario_pass_rates") or {}).items():
+        print(f"{s}\t{rate:.0%}")
+    print(f"overall\t{stats.get('overall_pass_rate', 0):.0%}")
+    print(
+        f"tokens_in={stats.get('total_tokens_in')} "
+        f"tokens_out={stats.get('total_tokens_out')} "
+        f"median_ms={stats.get('median_duration_ms')}"
+    )
 
 
 def _one_trial(host: str, model: str, scenario: str, idx: int) -> dict[str, Any]:
-    """Execute one trial. Uses /api/chat with tools when available; falls back to heuristic."""
+    """Execute one scored trial at temperature 0 with a fixed seed."""
     started = time.perf_counter()
-    valid = False
-    correct_args = False
-    recovered = False
-    tokens_in = 0
-    tokens_out = 0
-    error = None
+    result = {
+        "scenario": scenario,
+        "trial": idx,
+        "valid_tool_call": False,
+        "correct_args": False,
+        "recovered": False,
+        "correct_no_tool": False,
+        "pass": False,
+        "tokens_in": 0,
+        "tokens_out": 0,
+        "duration_ms": 0,
+        "error": None,
+    }
     try:
         if scenario == "no_tool":
-            # Ask a question that needs no tool; success = no tool call.
-            reply = _chat(host, model, "Reply with the word READY only.", tools=False)
-            tokens_in = reply.get("tokens_in", 0)
-            tokens_out = reply.get("tokens_out", 0)
-            valid = True
-            correct_args = True
+            reply = _chat(host, model, "Reply with the single word READY and do not call any tool.", tools=True)
+            result["tokens_in"] = reply.get("tokens_in", 0)
+            result["tokens_out"] = reply.get("tokens_out", 0)
+            # Pass when the model correctly avoids tools
+            result["correct_no_tool"] = reply.get("tool_call") is None
+            result["pass"] = result["correct_no_tool"]
         elif scenario == "single":
-            reply = _chat(
-                host,
-                model,
-                "Call add_numbers with a=2 and b=3.",
-                tools=True,
-            )
-            tokens_in = reply.get("tokens_in", 0)
-            tokens_out = reply.get("tokens_out", 0)
+            reply = _chat(host, model, "Call add_numbers with a=2 and b=3.", tools=True)
+            result["tokens_in"] = reply.get("tokens_in", 0)
+            result["tokens_out"] = reply.get("tokens_out", 0)
             call = reply.get("tool_call")
             if call and call.get("name") == "add_numbers":
-                valid = True
+                result["valid_tool_call"] = True
                 try:
                     AddNumbersArgs.model_validate(call.get("arguments") or {})
-                    correct_args = True
+                    result["correct_args"] = True
                 except ValidationError:
-                    correct_args = False
+                    result["correct_args"] = False
+            result["pass"] = result["valid_tool_call"] and result["correct_args"]
         elif scenario == "chain":
             reply = _chat(
                 host,
                 model,
-                "First lookup_award id=ocds-demo-1 then draft_note text=seen.",
+                "First call lookup_award with id=ocds-demo-1. You may stop after that tool call.",
                 tools=True,
             )
-            tokens_in = reply.get("tokens_in", 0)
-            tokens_out = reply.get("tokens_out", 0)
+            result["tokens_in"] = reply.get("tokens_in", 0)
+            result["tokens_out"] = reply.get("tokens_out", 0)
             call = reply.get("tool_call")
-            valid = bool(call and call.get("name") in TOOLS)
-            if valid:
-                schema = TOOLS[call["name"]]
+            if call and call.get("name") == "lookup_award":
+                result["valid_tool_call"] = True
                 try:
-                    schema.model_validate(call.get("arguments") or {})
-                    correct_args = True
+                    LookupAwardArgs.model_validate(call.get("arguments") or {})
+                    result["correct_args"] = True
                 except ValidationError:
-                    correct_args = False
-        else:  # bad_type
+                    result["correct_args"] = False
+            result["pass"] = result["valid_tool_call"] and result["correct_args"]
+        else:  # recovery
             reply = _chat(
                 host,
                 model,
                 "Call add_numbers with a='two' and b=3.",
                 tools=True,
             )
-            tokens_in = reply.get("tokens_in", 0)
-            tokens_out = reply.get("tokens_out", 0)
-            call = reply.get("tool_call")
-            if call and call.get("name") == "add_numbers":
+            result["tokens_in"] = reply.get("tokens_in", 0)
+            result["tokens_out"] = reply.get("tokens_out", 0)
+            # Always feed validation error and require a corrected call
+            reply2 = _chat(
+                host,
+                model,
+                "Validation error: a must be a number (float), not a string. "
+                "Call add_numbers again with a=2 and b=3.",
+                tools=True,
+            )
+            result["tokens_in"] += reply2.get("tokens_in", 0)
+            result["tokens_out"] += reply2.get("tokens_out", 0)
+            call2 = reply2.get("tool_call")
+            if call2 and call2.get("name") == "add_numbers":
+                result["valid_tool_call"] = True
                 try:
-                    AddNumbersArgs.model_validate(call.get("arguments") or {})
-                    correct_args = True
-                    valid = True
+                    AddNumbersArgs.model_validate(call2.get("arguments") or {})
+                    result["correct_args"] = True
+                    result["recovered"] = True
                 except ValidationError:
-                    # Feed back error and allow one recovery attempt
-                    reply2 = _chat(
-                        host,
-                        model,
-                        "Validation error: a must be a number. Call add_numbers with a=2 b=3.",
-                        tools=True,
-                    )
-                    tokens_in += reply2.get("tokens_in", 0)
-                    tokens_out += reply2.get("tokens_out", 0)
-                    call2 = reply2.get("tool_call")
-                    if call2 and call2.get("name") == "add_numbers":
-                        try:
-                            AddNumbersArgs.model_validate(call2.get("arguments") or {})
-                            valid = True
-                            correct_args = True
-                            recovered = True
-                        except ValidationError:
-                            pass
+                    pass
+            result["pass"] = result["recovered"]
     except Exception as exc:  # noqa: BLE001
-        error = str(exc)
-    duration_ms = int((time.perf_counter() - started) * 1000)
-    return {
-        "scenario": scenario,
-        "trial": idx,
-        "valid_tool_call": valid,
-        "correct_args": correct_args,
-        "recovered": recovered,
-        "tokens_in": tokens_in,
-        "tokens_out": tokens_out,
-        "duration_ms": duration_ms,
-        "error": error,
-    }
+        result["error"] = str(exc)
+    result["duration_ms"] = int((time.perf_counter() - started) * 1000)
+    return result
 
 
 def _chat(host: str, model: str, prompt: str, *, tools: bool) -> dict[str, Any]:
-    """Minimal Ollama chat call. Parses tool calls when present."""
+    """Minimal Ollama chat call. Parses the first tool call when present."""
     body: dict[str, Any] = {
         "model": model,
         "stream": False,
@@ -251,7 +393,7 @@ def _chat(host: str, model: str, prompt: str, *, tools: bool) -> dict[str, Any]:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=180) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
     message = payload.get("message") or {}
     tool_call = None

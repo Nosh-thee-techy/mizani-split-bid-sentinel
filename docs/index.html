@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mizani — Split-Bid Sentinel (demo)</title>
-  <!-- Project Pages live under /mizani-split-bid-sentinel/; keep relative API links working. -->
+  <title>Mizani — Split-Bid Sentinel</title>
   <script>
     (function () {
       if (location.hostname.endsWith("github.io")) {
@@ -15,187 +14,342 @@
     })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --ink: #1a2218;
-      --muted: #5c6b57;
-      --paper: #f3efe6;
-      --panel: #fffdf8;
-      --line: #d5cec0;
-      --accent: #0f6b4c;
-      --warn: #8a5a12;
-      --danger: #7a2e2e;
+      --ink: #0c1210;
+      --muted: #5a6a63;
+      --paper: #e8f0ec;
+      --panel: #f4faf6;
+      --line: #b7c9bf;
+      --accent: #0a5c45;
+      --accent-2: #1a8a68;
+      --warn: #9a6b12;
+      --danger: #8b2e2e;
+      --draft: #c45c26;
     }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      font-family: "DM Sans", system-ui, sans-serif;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
       color: var(--ink);
       background:
-        radial-gradient(1200px 500px at 10% -10%, #dce8df 0%, transparent 55%),
-        radial-gradient(900px 400px at 100% 0%, #e8dfd0 0%, transparent 50%),
-        var(--paper);
-      line-height: 1.5;
+        linear-gradient(165deg, #0c1210 0%, #12241c 42%, #1a3328 100%);
+      min-height: 100vh;
     }
-    header {
-      padding: 2.5rem 1.25rem 1.5rem;
-      max-width: 1100px;
-      margin: 0 auto;
+
+    /* —— Hero: one composition —— */
+    .hero {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: clamp(1.5rem, 4vw, 3rem);
+      position: relative;
+      overflow: hidden;
+      color: #eef6f1;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 70% 20%, rgba(26, 138, 104, 0.35), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 10% 80%, rgba(196, 92, 38, 0.12), transparent 50%),
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      animation: wash 14s ease-in-out infinite alternate;
+    }
+    @keyframes wash {
+      from { transform: scale(1); opacity: 1; }
+      to { transform: scale(1.04); opacity: 0.92; }
+    }
+    .hero-inner {
+      position: relative;
+      max-width: 40rem;
+      animation: rise 0.9s ease-out both;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .brand {
-      font-family: "Instrument Serif", Georgia, serif;
-      font-size: clamp(2.4rem, 5vw, 3.4rem);
-      letter-spacing: -0.02em;
-      margin: 0 0 0.35rem;
+      font-family: "Fraunces", Georgia, serif;
+      font-size: clamp(3.2rem, 12vw, 6rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 0.95;
+      margin: 0 0 1rem;
     }
-    .lede { color: var(--muted); max-width: 42rem; margin: 0; }
-    .badge {
-      display: inline-block;
-      margin-top: 1rem;
-      padding: 0.35rem 0.7rem;
+    .hero h2 {
+      font-family: "Fraunces", Georgia, serif;
+      font-weight: 500;
+      font-size: clamp(1.25rem, 3vw, 1.75rem);
+      margin: 0 0 0.75rem;
+      color: #c5e0d4;
+    }
+    .hero p {
+      margin: 0 0 1.75rem;
+      color: #9bb5a8;
+      font-size: 1.05rem;
+      max-width: 32rem;
+      line-height: 1.55;
+    }
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.75rem 1.25rem;
+      background: var(--accent-2);
+      color: #04140e;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .cta:hover { background: #22a87c; transform: translateY(-1px); }
+    .cta.ghost {
+      background: transparent;
+      color: #c5e0d4;
+      border: 1px solid rgba(197, 224, 212, 0.35);
+    }
+    .cta.ghost:hover { border-color: #c5e0d4; background: rgba(255,255,255,0.04); }
+    .static-note {
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: #7a9588;
+      letter-spacing: 0.02em;
+    }
+
+    /* —— Content band —— */
+    .band {
+      background: var(--paper);
+      color: var(--ink);
+      padding: clamp(2.5rem, 6vw, 4.5rem) clamp(1.25rem, 4vw, 3rem);
+    }
+    .band-inner { max-width: 720px; margin: 0 auto; }
+    .band h2 {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: clamp(1.75rem, 4vw, 2.25rem);
+      font-weight: 500;
+      margin: 0 0 0.5rem;
+    }
+    .band .sub {
+      color: var(--muted);
+      margin: 0 0 2rem;
+      font-size: 0.98rem;
+    }
+
+    /* Brief sheet — one job: look like a DRAFT committee brief */
+    .brief {
+      background: #fff;
       border: 1px solid var(--line);
-      background: var(--panel);
+      padding: clamp(1.5rem, 4vw, 2.5rem);
+      box-shadow: 0 24px 60px rgba(12, 18, 16, 0.08);
+      animation: rise 1s 0.15s ease-out both;
+    }
+    .brief-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      align-items: baseline;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--line);
       font-size: 0.85rem;
-      color: var(--warn);
+      color: var(--muted);
     }
-    main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 1.25rem 3rem;
-      display: grid;
-      gap: 1.25rem;
+    .stamp {
+      font-weight: 600;
+      color: var(--draft);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.75rem;
     }
-    section {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      padding: 1.1rem 1.2rem 1.25rem;
-    }
-    h2 {
-      font-family: "Instrument Serif", Georgia, serif;
-      font-size: 1.55rem;
-      font-weight: 400;
+    .brief h3 {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 1.45rem;
+      font-weight: 500;
       margin: 0 0 0.75rem;
     }
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 0.75rem;
+    .brief .lede-brief {
+      margin: 0 0 1.5rem;
+      line-height: 1.6;
     }
-    .metric {
-      border: 1px solid var(--line);
-      padding: 0.75rem;
-      background: #faf7f0;
+    .finding {
+      margin: 0 0 1.25rem;
+      padding: 0 0 1.25rem;
+      border-bottom: 1px solid #e4ebe6;
     }
-    .metric strong {
-      display: block;
-      font-size: 1.45rem;
-      color: var(--accent);
-      line-height: 1.1;
-    }
-    .metric span { color: var(--muted); font-size: 0.82rem; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.88rem;
-    }
-    th, td {
-      text-align: left;
-      padding: 0.45rem 0.4rem;
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
-    }
-    th { color: var(--muted); font-weight: 600; }
-    .excluded { color: var(--danger); }
-    .apis a {
-      display: inline-block;
-      margin: 0.25rem 0.6rem 0.25rem 0;
-      color: var(--accent);
-    }
-    code {
-      font-size: 0.85em;
-      background: #efe9dc;
-      padding: 0.1rem 0.3rem;
-    }
-    footer {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 1.25rem 2.5rem;
+    .finding:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .finding strong { display: block; margin-bottom: 0.35rem; }
+    .finding .ids {
+      font-size: 0.8rem;
       color: var(--muted);
+      font-family: ui-monospace, "IBM Plex Mono", monospace;
+      word-break: break-all;
+    }
+    .caveat {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px dashed var(--line);
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    /* Commands */
+    .commands {
+      margin-top: 3rem;
+    }
+    .commands h2 { margin-bottom: 0.35rem; }
+    pre {
+      background: #0c1210;
+      color: #c5e0d4;
+      padding: 1.1rem 1.25rem;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.55;
+      margin: 0 0 1rem;
+      border-left: 3px solid var(--accent-2);
+    }
+    pre .c { color: #7a9588; }
+
+    /* Quiet evidence strip — not a dashboard */
+    .evidence {
+      margin-top: 2.5rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--line);
+    }
+    .evidence dl {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.35rem 1.25rem;
+      margin: 0;
+      font-size: 0.92rem;
+    }
+    .evidence dt { color: var(--muted); }
+    .evidence dd { margin: 0; font-weight: 500; }
+    .awards-list {
+      list-style: none;
+      padding: 0;
+      margin: 1.25rem 0 0;
+    }
+    .awards-list li {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.5rem 1rem;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid #dce6e0;
       font-size: 0.9rem;
     }
-    footer a { color: var(--accent); }
+    .awards-list .who { color: var(--muted); font-size: 0.8rem; }
+    .awards-list .amt { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+    footer.site {
+      background: #0c1210;
+      color: #7a9588;
+      padding: 1.5rem clamp(1.25rem, 4vw, 3rem) 2.5rem;
+      font-size: 0.85rem;
+    }
+    footer.site a { color: #9bb5a8; }
     .err { color: var(--danger); }
   </style>
 </head>
 <body>
-  <header>
-    <h1 class="brand">Mizani</h1>
-    <p class="lede">
-      Cited, auditable procurement briefs from Kenya OCDS award data.
-      This <strong>static</strong> demo shows a snapshot of ingest and data-quality
-      (not a live agent). Real OCDS pulls use registry publication 147 via
-      <code>mizani fetch</code>.
-    </p>
-    <div class="badge" id="status-badge">Loading demo data…</div>
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="brand">Mizani</p>
+      <h2>Cited briefs for a procurement committee</h2>
+      <p>
+        Weigh Kenya OCDS awards. Never award a tender. Never accuse a supplier.
+        A named human releases the brief — the agent cannot.
+      </p>
+      <div class="cta-row">
+        <a class="cta" href="#brief">Read the sample DRAFT</a>
+        <a class="cta ghost" href="#run">Run the live CLI flow</a>
+      </div>
+      <p class="static-note">
+        This page is a static snapshot for GitHub Pages — not a live agent.
+      </p>
+    </div>
   </header>
 
-  <main>
-    <section>
-      <h2>Data-quality snapshot</h2>
-      <p style="color:var(--muted);margin-top:0">
-        Synthetic labelled sample — not mixed into real-data findings.
-      </p>
-      <div class="metrics" id="metrics"></div>
-    </section>
+  <div class="band">
+    <div class="band-inner">
+      <section id="brief" aria-labelledby="brief-title">
+        <h2 id="brief-title">Sample committee brief</h2>
+        <p class="sub">
+          Synthesised from the labelled synthetic sample on this site.
+          Production runs write a real markdown brief under <code>briefs/drafts/</code>.
+        </p>
 
-    <section>
-      <h2>Awards after filters</h2>
-      <div style="overflow-x:auto">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Buyer</th>
-              <th>Supplier</th>
-              <th>Value (KES)</th>
-              <th>Place</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="awards-body">
-            <tr><td colspan="6">Loading…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+        <article class="brief" id="brief-sheet">
+          <div class="brief-meta">
+            <span class="stamp" id="brief-stamp">DRAFT · awaiting approval</span>
+            <span id="brief-buyer">Buyer loading…</span>
+            <span id="brief-status">Status…</span>
+          </div>
+          <h3>Findings for committee review</h3>
+          <p class="lede-brief" id="brief-lede">
+            Loading sample awards…
+          </p>
+          <div id="findings"></div>
+          <p class="caveat" id="brief-caveat"></p>
+        </article>
+      </section>
 
-    <section class="apis">
-      <h2>API endpoints</h2>
-      <p style="color:var(--muted);margin-top:0">
-        Static JSON endpoints served with this demonstration.
-      </p>
-      <div>
-        <a href="api/health.json"><code>GET api/health.json</code></a>
-        <a href="api/quality.json"><code>GET api/quality.json</code></a>
-        <a href="api/awards.json"><code>GET api/awards.json</code></a>
-      </div>
-    </section>
-  </main>
+      <section class="commands" id="run" aria-labelledby="run-title">
+        <h2 id="run-title">Exact commands (live path)</h2>
+        <p class="sub">
+          This is the real demo judges should see — terminal, not this page.
+        </p>
+        <pre><span class="c"># 1. Setup (once)</span>
+uv sync --all-extras
+uv run mizani setup
 
-  <footer>
-    Source:
-    <a href="https://github.com/Nosh-thee-techy/mizani-split-bid-sentinel">
-      Nosh-thee-techy/mizani-split-bid-sentinel
-    </a>
-    · Apache-2.0 · Never awards a tender · Never accuses a supplier
+<span class="c"># 2. End-to-end demo → DRAFT brief + release gate</span>
+uv run mizani demo --planner deterministic
+
+<span class="c"># 3. Human-only release (agent cannot do this)</span>
+uv run mizani approve --brief briefs/drafts/&lt;file&gt;.md --as "Your Full Name" --note "reviewed"
+
+<span class="c"># 4. Prove the evidence chain</span>
+uv run mizani ledger verify
+
+<span class="c"># Optional: real Kenya OCDS (registry publication 147)</span>
+uv run mizani fetch --year 2026
+uv run mizani demo --real --planner deterministic</pre>
+      </section>
+
+      <section class="evidence" aria-labelledby="ev-title">
+        <h2 id="ev-title">Snapshot evidence</h2>
+        <p class="sub">From the static JSON served with this page (synthetic sample).</p>
+        <dl id="evidence-dl">
+          <dt>Status</dt><dd id="ev-status">…</dd>
+        </dl>
+        <ul class="awards-list" id="awards-list"></ul>
+      </section>
+    </div>
+  </div>
+
+  <footer class="site">
+    <a href="https://github.com/Nosh-thee-techy/mizani-split-bid-sentinel">github.com/Nosh-thee-techy/mizani-split-bid-sentinel</a>
+    · Apache-2.0 · Never awards a tender · Never names individuals
   </footer>
 
   <script>
-    const fmt = (n) => n == null ? "—" : Number(n).toLocaleString();
-    const money = (n) => n == null ? "—" : Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    const money = (n) =>
+      n == null ? "—" : "KES " + Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
     async function load() {
       const [health, quality, awards] = await Promise.all([
@@ -204,47 +358,72 @@
         fetch("api/awards.json").then((r) => r.json()),
       ]);
 
-      document.getElementById("status-badge").textContent =
-        `${health.status.toUpperCase()} · ${health.service} · step ${health.build_step}`;
+      document.getElementById("ev-status").textContent =
+        `${health.status} · build step ${health.build_step}`;
 
+      const kept = awards.filter((a) => !a.excluded);
+      const excluded = awards.filter((a) => a.excluded);
+      const byBuyer = {};
+      for (const a of kept) {
+        const b = a.buyer_name || a.buyer_id || "Unknown buyer";
+        (byBuyer[b] ||= []).push(a);
+      }
+      const topBuyer = Object.entries(byBuyer).sort((a, b) => b[1].length - a[1].length)[0];
+      const buyerName = topBuyer ? topBuyer[0] : "Sample buyer";
+      const cluster = topBuyer ? topBuyer[1] : kept.slice(0, 3);
+
+      document.getElementById("brief-buyer").textContent = buyerName;
+      document.getElementById("brief-status").textContent =
+        `${kept.length} awards kept · ${excluded.length} excluded · synthetic sample`;
+      document.getElementById("brief-lede").textContent =
+        `Review of recent awards for ${buyerName}. Numbers below come from deterministic detectors on cited record IDs — the model does not compute them. This page is illustrative; a live run writes a full markdown brief.`;
+
+      const findingsEl = document.getElementById("findings");
+      const ids = cluster.map((a) => a.record_id).filter(Boolean);
+      const total = cluster.reduce((s, a) => s + (Number(a.value_amount) || 0), 0);
+      findingsEl.innerHTML = `
+        <div class="finding">
+          <strong>Near-threshold cluster (illustrative SPLIT signal)</strong>
+          <p style="margin:0.35rem 0">${cluster.length} awards to the same supplier group, close in time, totalling ${money(total)}. Benign explanations include framework call-offs and legitimate repeat supply.</p>
+          <p class="ids">record_ids: ${ids.slice(0, 5).join(" · ") || "—"}</p>
+        </div>
+        <div class="finding">
+          <strong>Data caveats</strong>
+          <p style="margin:0.35rem 0">Open tenders excluded: ${quality.row_counts.tenders_excluded_open}. Location coverage on this synthetic snapshot: ${
+            quality.place_lens?.location_coverage == null
+              ? "n/a"
+              : Math.round(quality.place_lens.location_coverage * 100) + "%"
+          }. Real Kenya PPRA bulk has <em>0% location coverage</em> — place lens is out for real briefs.</p>
+        </div>
+      `;
+
+      document.getElementById("brief-caveat").textContent =
+        "Status remains DRAFT until a named human runs mizani approve. The agent has no approval tool.";
+
+      const dl = document.getElementById("evidence-dl");
       const c = quality.row_counts;
-      const place = quality.place_lens;
-      const vals = quality.value_distribution || {};
-      const cards = [
+      const rows = [
         ["Awards kept", c.awards_kept],
-        ["Awards excluded", c.awards_excluded],
-        ["Open tenders dropped", c.tenders_excluded_open],
+        ["Excluded", c.awards_excluded],
         ["Canonical suppliers", c.suppliers_canonical],
-        ["Location coverage", place.location_coverage == null ? "—" : `${Math.round(place.location_coverage * 100)}%`],
-        ["Outliers >100× median", vals.extreme_outlier_count_gt_100x_median ?? 0],
+        ["Sample label", quality.ingest_meta?.sample_label || "synthetic-sample"],
       ];
-      document.getElementById("metrics").innerHTML = cards.map(([label, value]) => `
-        <div class="metric"><strong>${value}</strong><span>${label}</span></div>
-      `).join("");
+      dl.innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
 
-      const body = document.getElementById("awards-body");
-      body.innerHTML = awards.map((a) => {
-        const placeLabel = a.county || a.region || "unlocated";
-        const buyer = a.buyer_name || a.buyer_id || "—";
-        const status = a.excluded
-          ? `<span class="excluded">excluded (${a.exclude_reason || "n/a"})</span>`
-          : "kept";
-        return `<tr>
-          <td>${a.date || "—"}</td>
-          <td>${buyer}</td>
-          <td>${a.supplier_canonical_name || "—"}</td>
-          <td>${money(a.value_amount)}</td>
-          <td>${placeLabel}</td>
-          <td>${status}</td>
-        </tr>`;
-      }).join("");
+      document.getElementById("awards-list").innerHTML = kept.slice(0, 8).map((a) => `
+        <li>
+          <div>
+            <div>${a.supplier_canonical_name || "—"}</div>
+            <div class="who">${a.buyer_name || a.buyer_id || "—"} · ${a.date || "no date"}</div>
+          </div>
+          <div class="amt">${money(a.value_amount)}</div>
+        </li>
+      `).join("");
     }
 
     load().catch((err) => {
-      document.getElementById("status-badge").textContent = "Failed to load demo data";
-      document.getElementById("status-badge").classList.add("err");
-      document.getElementById("awards-body").innerHTML =
-        `<tr><td colspan="6" class="err">${err}</td></tr>`;
+      document.getElementById("brief-lede").innerHTML =
+        `<span class="err">Failed to load snapshot: ${err}</span>`;
     });
   </script>
 </body>

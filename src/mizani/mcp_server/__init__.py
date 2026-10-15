@@ -1,1 +1,1 @@
-"""Mizani MCP server — domain tools only (build step 6)."""
+"""Mizani MCP server package (domain tools + FastMCP entrypoint)."""

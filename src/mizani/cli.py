@@ -156,6 +156,61 @@ def _print_quality_summary(report: dict) -> None:
     console.print_json(json.dumps(report, indent=2))
 
 
+@app.command("setup")
+def setup_cmd() -> None:
+    """Check Python, uv, DuckDB, sample data, and Ollama reachability."""
+    from mizani.demo_flow import check_setup
+
+    rows = check_setup(ROOT)
+    table = Table(title="Mizani setup check")
+    table.add_column("Check")
+    table.add_column("OK")
+    table.add_column("Detail")
+    all_required_ok = True
+    for name, ok, detail in rows:
+        table.add_row(name, "yes" if ok else "no", detail)
+        if name != "ollama" and not ok:
+            all_required_ok = False
+    console.print(table)
+    if not all_required_ok:
+        console.print("Setup incomplete: fix the rows marked no (Ollama is optional for now).")
+        raise typer.Exit(code=1)
+    ollama_ok = next(ok for name, ok, _ in rows if name == "ollama")
+    if not ollama_ok:
+        console.print(
+            "Note: Ollama is not running. Agent demo (later step) will need it; "
+            "ingest/ledger demo can still run."
+        )
+    console.print("Setup OK for current build steps.")
+
+
+@app.command("demo")
+def demo_cmd(
+    real: bool = typer.Option(
+        False,
+        "--real",
+        help="Use data/raw/real if present (requires confirmed source)",
+    ),
+) -> None:
+    """Run the cross-platform demo: ingest sample, quality, ledger verify."""
+    from mizani.demo_flow import run_demo
+
+    try:
+        summary = run_demo(root=ROOT, use_real=real)
+    except FileNotFoundError as exc:
+        console.print(str(exc))
+        raise typer.Exit(code=1) from exc
+    except RuntimeError as exc:
+        console.print(str(exc))
+        raise typer.Exit(code=1) from exc
+
+    console.print("Demo complete.")
+    console.print(f"run_id: {summary['run_id']}")
+    console.print(f"awards_kept: {summary.get('awards_kept')}")
+    console.print(f"ledger: {summary['ledger_message']}")
+    console.print(f"quality: {summary['quality_report']}")
+
+
 @ledger_app.command("verify")
 def ledger_verify_cmd(
     path: Path = typer.Option(DEFAULT_LEDGER, "--path", help="SQLite ledger path"),

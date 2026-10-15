@@ -7,8 +7,24 @@ awards against each other and shows where the balance is off.
 
 **Track / theme:** Governance · The Bid Box Challenge · Value for money  
 **Licence:** [Apache-2.0](LICENSE)  
-**Status:** early build — **steps 1–2 done** (repo scaffold + OCDS ingestion).
-Agent, MCP, ledger, and human gate are specified below and land in later steps.
+**Status:** core pipeline runnable — ingest, ledger, detectors, verifier, MCP tools,
+deterministic agent through the release gate, approval CLI, evals E1–E12.  
+See **[BUILD_STATUS.md](BUILD_STATUS.md)** for what works, what does not, and how to continue.
+
+### One-command demo (Windows and Linux)
+
+```bash
+uv sync --all-extras
+uv run mizani demo
+```
+
+Then (human only — not available to the agent):
+
+```bash
+uv run mizani approve --brief briefs/drafts/<file>.md --as "Full Name" --note "reviewed"
+uv run mizani ledger verify
+```
+
 
 ### Live demonstration
 
@@ -146,8 +162,9 @@ Orchestration: **LangGraph** with checkpointing so a paused run survives restart
 capable (e.g. Qwen/Llama). Full demo task runs locally. Prompts live in
 `prompts/` as versioned text files.
 
-**Status:** graph not implemented yet (build step 7). Package stub:
-`src/mizani/agent/`.
+**Status:** investigation graph runs end-to-end with a **deterministic planner**
+(Ollama tool-calling planner not fully wired yet — see BUILD_STATUS.md).
+Package: `src/mizani/agent/`.
 
 ---
 
@@ -164,8 +181,8 @@ Two MCP servers:
    Schema discovery and ad-hoc SQL. Name, version, and licence will be recorded
    in `ARCHITECTURE.md` when pinned.
 
-**Status:** MCP server not implemented yet (build step 6). Package stub:
-`src/mizani/mcp_server/`.
+**Status:** `mizani-mcp` implemented (`uv run python -m mizani.mcp_server.server`).
+Borrowed server documented in `docs/borrowed-mcp.md` (`mcp-server-duckdb`, read-only).
 
 ---
 
@@ -189,7 +206,8 @@ rejected. There is **no** award / rank / recommend-winner tool.
 
 ### Borrowed server
 
-Community SQL MCP → DuckDB (`data/processed/mizani.duckdb`), read-only.
+**mcp-server-duckdb** (PyPI) → DuckDB file, `--readonly`.  
+Name / version / licence notes: [`docs/borrowed-mcp.md`](docs/borrowed-mcp.md).
 
 ---
 
@@ -204,7 +222,7 @@ Community SQL MCP → DuckDB (`data/processed/mizani.duckdb`), read-only.
 
 Approval is **not** an MCP tool and is not reachable by the model.
 
-**Status:** approval CLI lands in build step 8.
+**Status:** `mizani approve` / `mizani reject` implemented; agent cannot call them.
 
 ---
 
@@ -282,7 +300,10 @@ make demo
 - Framework agreements can look like splits; listed as a benign explanation;
   admitted failures go in `EVALS.md`.
 - Open-weights models may fumble tool calls; schemas stay small with re-prompt.
-- Current repo: **ingestion + quality report only** — agent/MCP/ledger not shipped yet.
+- Open-weights **tool-calling agent loop** not fully proven on local models yet
+  (deterministic demo path works; run `mizani model-check`).
+- Real PPIP bulk data not pulled until `config/sources.yaml` is verified.
+- Legal thresholds still null — SPLIT on real briefs needs regulations filled in.
 
 ---
 

@@ -34,3 +34,7 @@ Thumbs.db
 *.sqlite3
 runs/
 briefs/
+data/processed/checkpoints/
+data/processed/*.sqlite
+data/processed/last_demo.json
+evals/results/_tmp_ledger.sqlite

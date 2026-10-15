@@ -1,1 +1,5 @@
-"""Committee brief and plain-language digest templates (build step 8)."""
+"""Committee brief rendering and status helpers."""
+
+from mizani.brief.render import render_brief_markdown
+
+__all__ = ["render_brief_markdown"]

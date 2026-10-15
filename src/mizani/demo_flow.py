@@ -72,17 +72,28 @@ def run_demo(
         model="none",
     )
 
-    # Marker entry so demo always leaves a verifiable chain even if ingest wrapper is sole call.
+    # Full investigation through the gate (deterministic planner; no self-approval).
+    from mizani.agent.graph import run_investigation
+
+    agent_state = run_investigation(
+        "Review awards for buyer=buyer-nairobi-health category=goods over 12 months",
+        model_name="deterministic-demo",
+    )
+
     ledger.append(
         LedgerEntry(
             run_id=run_id,
             actor=LedgerActor.AGENT,
             event=LedgerEvent.TOOL_CALL,
             tool="demo_complete",
-            inputs={"step": "ingest+quality"},
-            outputs_digest="demo",
-            record_ids=["demo:complete"],
-            model="none",
+            inputs={
+                "step": "ingest+investigate+verify+draft+gate",
+                "agent_run_id": agent_state.run_id,
+                "agent_status": agent_state.status,
+            },
+            outputs_digest=agent_state.brief_hash or "no-brief",
+            record_ids=[agent_state.brief_id or "demo:complete"],
+            model="deterministic-demo",
         )
     )
 
@@ -97,6 +108,12 @@ def run_demo(
         "broken_entry_id": broken,
         "stats": result.get("stats"),
         "awards_kept": (result.get("stats") or {}).get("awards_kept"),
+        "agent_run_id": agent_state.run_id,
+        "agent_status": agent_state.status,
+        "brief_path": agent_state.brief_path,
+        "brief_id": agent_state.brief_id,
+        "verified_findings": len(agent_state.verified_findings),
+        "dropped_findings": len(agent_state.dropped_findings),
     }
     summary_path = root / "data" / "processed" / "last_demo.json"
     summary_path.parent.mkdir(parents=True, exist_ok=True)

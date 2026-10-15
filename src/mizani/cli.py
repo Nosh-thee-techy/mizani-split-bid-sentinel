@@ -192,7 +192,7 @@ def demo_cmd(
         help="Use data/raw/real if present (requires confirmed source)",
     ),
 ) -> None:
-    """Run the cross-platform demo: ingest sample, quality, ledger verify."""
+    """Run the cross-platform demo through the human release gate."""
     from mizani.demo_flow import run_demo
 
     try:
@@ -207,8 +207,79 @@ def demo_cmd(
     console.print("Demo complete.")
     console.print(f"run_id: {summary['run_id']}")
     console.print(f"awards_kept: {summary.get('awards_kept')}")
+    console.print(f"agent_status: {summary.get('agent_status')}")
+    console.print(f"brief: {summary.get('brief_path')}")
+    console.print(f"verified_findings: {summary.get('verified_findings')}")
     console.print(f"ledger: {summary['ledger_message']}")
     console.print(f"quality: {summary['quality_report']}")
+    console.print(
+        "Release gate: brief remains DRAFT until `mizani approve --brief ... --as \"Name\"`."
+    )
+
+
+@app.command("approve")
+def approve_cmd(
+    brief: Path = typer.Option(..., "--brief", help="Path to DRAFT brief .md"),
+    as_name: str = typer.Option(..., "--as", help="Named approver (required)"),
+    note: str = typer.Option("", "--note", help="Optional approval note"),
+    ledger_path: Path = typer.Option(DEFAULT_LEDGER, "--ledger"),
+    release_dir: Path = typer.Option(ROOT / "briefs" / "released", "--release-dir"),
+) -> None:
+    """Human approval — not an MCP tool; records a named approver on the ledger."""
+    from mizani.brief.approve import ApprovalError, approve_brief
+
+    try:
+        meta = approve_brief(
+            brief_path=brief,
+            approver=as_name,
+            note=note,
+            ledger_path=ledger_path,
+            release_dir=release_dir,
+        )
+    except ApprovalError as exc:
+        console.print(str(exc))
+        raise typer.Exit(code=1) from exc
+    console.print(f"APPROVED {meta.get('brief_id')} by {as_name}")
+    console.print(f"Released under {release_dir}")
+
+
+@app.command("reject")
+def reject_cmd(
+    brief: Path = typer.Option(..., "--brief", help="Path to DRAFT brief .md"),
+    as_name: str = typer.Option(..., "--as", help="Named reviewer (required)"),
+    note: str = typer.Option(..., "--note", help="Rejection note"),
+    ledger_path: Path = typer.Option(DEFAULT_LEDGER, "--ledger"),
+) -> None:
+    """Human rejection — not an MCP tool."""
+    from mizani.brief.approve import ApprovalError, reject_brief
+
+    try:
+        meta = reject_brief(
+            brief_path=brief,
+            approver=as_name,
+            note=note,
+            ledger_path=ledger_path,
+        )
+    except ApprovalError as exc:
+        console.print(str(exc))
+        raise typer.Exit(code=1) from exc
+    console.print(f"REJECTED {meta.get('brief_id')} by {as_name}")
+
+
+@app.command("model-check")
+def model_check_cmd(
+    model: str = typer.Option(..., "--model", help="Ollama model name"),
+    trials: int = typer.Option(20, "--trials"),
+) -> None:
+    """Smoke-test open-weights tool calling via Ollama before relying on the agent."""
+    from mizani.model_check import run_model_check
+
+    try:
+        path = run_model_check(model=model, trials=trials, root=ROOT)
+    except RuntimeError as exc:
+        console.print(str(exc))
+        raise typer.Exit(code=1) from exc
+    console.print(f"Wrote {path}")
 
 
 @ledger_app.command("verify")

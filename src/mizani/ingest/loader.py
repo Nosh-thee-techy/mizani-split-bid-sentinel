@@ -115,22 +115,41 @@ def _buyer_from_release(release: dict[str, Any]) -> tuple[str | None, str | None
 def _suppliers_from_award(
     award: dict[str, Any],
     parties: dict[str, dict[str, Any]],
-) -> list[tuple[str | None, str | None]]:
-    """Return list of (raw_id, raw_name) for suppliers on an award."""
-    results: list[tuple[str | None, str | None]] = []
+) -> list[tuple[str | None, str | None, str | None]]:
+    """Return list of (raw_id, raw_name, id_scheme) for suppliers on an award.
+
+    Names are recovered from award.suppliers[].name or the matching party name
+    when the party record itself is missing a name (Kenya PPRA quirk).
+    """
+    results: list[tuple[str | None, str | None, str | None]] = []
     for supplier in award.get("suppliers") or []:
         sid = str(supplier["id"]) if supplier.get("id") else None
         name = supplier.get("name")
+        scheme = None
+        # identifier scheme when present (often invalid on Kenya data)
+        ident = supplier.get("identifier") or {}
+        if isinstance(ident, dict):
+            scheme = ident.get("scheme")
+            if not sid and ident.get("id"):
+                sid = str(ident["id"])
+            name = name or ident.get("legalName")
         if sid and sid in parties:
-            name = name or parties[sid].get("name")
-        results.append((sid, name))
+            party = parties[sid]
+            name = name or party.get("name")
+            pident = party.get("identifier") or {}
+            if isinstance(pident, dict):
+                scheme = scheme or pident.get("scheme")
+        results.append((sid, name, scheme))
     if results:
         return results
-    # Fall back to parties marked supplier when award.suppliers is empty
     for party in parties.values():
         if party_role_is_supplier(party.get("roles")):
             sid = str(party["id"]) if party.get("id") else None
-            results.append((sid, party.get("name")))
+            scheme = None
+            pident = party.get("identifier") or {}
+            if isinstance(pident, dict):
+                scheme = pident.get("scheme")
+            results.append((sid, party.get("name"), scheme))
     return results
 
 
@@ -172,8 +191,9 @@ def _normalise_description(desc: str | None) -> str | None:
 
 def iter_json_documents(path: Path) -> Iterator[dict[str, Any]]:
     """Yield JSON objects from a .json or .jsonl file."""
+    # utf-8-sig strips a BOM if a Windows editor rewrote the file.
     if path.suffix.lower() == ".jsonl":
-        with path.open(encoding="utf-8") as handle:
+        with path.open(encoding="utf-8-sig") as handle:
             for line_no, line in enumerate(handle, start=1):
                 line = line.strip()
                 if not line:
@@ -187,7 +207,7 @@ def iter_json_documents(path: Path) -> Iterator[dict[str, Any]]:
                 else:
                     raise ValueError(f"{path}:{line_no}: expected object, got {type(doc)}")
     else:
-        with path.open(encoding="utf-8") as handle:
+        with path.open(encoding="utf-8-sig") as handle:
             doc = json.load(handle)
         if isinstance(doc, list):
             for item in doc:
@@ -354,8 +374,14 @@ def release_to_rows(
 
     # Unknown tender status with no awards: nothing to keep on award side.
     awards = release.get("awards") or []
+    if not awards:
+        stats.releases_with_empty_awards += 1
     if not awards and tender_status is None and not keep_awarded_when_unknown:
         return tender_row, awards_out, items_out, buyer_row
+
+    procurement_method = tender.get("procurementMethod") or tender.get(
+        "procurementMethodDetails"
+    )
 
     for award in awards:
         stats.awards_raw += 1
@@ -368,9 +394,9 @@ def release_to_rows(
 
         suppliers = _suppliers_from_award(award, parties)
         if not suppliers:
-            suppliers = [(None, None)]
+            suppliers = [(None, None, None)]
 
-        for raw_id, raw_name in suppliers:
+        for raw_id, raw_name, id_scheme in suppliers:
             caveats: list[str] = []
             excluded = False
             exclude_reason: str | None = None
@@ -390,6 +416,13 @@ def release_to_rows(
                 caveats.append("location missing")
             if raw_id is None:
                 caveats.append("supplier id missing")
+            # Kenya quirk: identifier schemes are often missing or non-standard.
+            if id_scheme in (None, "", "null", "None"):
+                caveats.append("supplier id scheme missing or invalid")
+                stats.invalid_supplier_id_schemes += 1
+            elif str(id_scheme).lower() in {"unknown", "n/a", "na", "none"}:
+                caveats.append(f"supplier id scheme invalid: {id_scheme}")
+                stats.invalid_supplier_id_schemes += 1
 
             record_id = f"ocds-award-{ocid}-{award_id}"
             if raw_id:
@@ -409,10 +442,12 @@ def release_to_rows(
                 supplier_raw_id=raw_id,
                 supplier_raw_name=raw_name,
                 category=category,
+                procurement_method=str(procurement_method) if procurement_method else None,
                 county=county,
                 region=region,
                 tender_estimate=estimate,
                 tender_estimate_currency=estimate_currency,
+                supplier_id_scheme=str(id_scheme) if id_scheme else None,
                 release_id=release_id,
                 release_date=release_date,
                 excluded=excluded,

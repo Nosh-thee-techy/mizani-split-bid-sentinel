@@ -85,14 +85,29 @@ class SupplierCanonicaliser:
     aliases stay consistent within one ingest run.
     """
 
-    def __init__(self, *, fuzzy_threshold: float = 92.0, name_min_length: int = 3) -> None:
-        """Configure matching thresholds from detectors.yaml / ingest config."""
+    def __init__(
+        self,
+        *,
+        fuzzy_threshold: float = 92.0,
+        name_min_length: int = 3,
+        enable_fuzzy: bool = True,
+        enable_fuzzy_above_suppliers: int = 5000,
+    ) -> None:
+        """Configure matching thresholds from detectors.yaml / ingest config.
+
+        Fuzzy matching is O(n^2) in cluster count. On large real pulls we auto-
+        disable it once ``enable_fuzzy_above_suppliers`` clusters exist so ingest
+        stays tractable; exact id/name merges still run.
+        """
         self.fuzzy_threshold = fuzzy_threshold
         self.name_min_length = name_min_length
+        self.enable_fuzzy = enable_fuzzy
+        self.enable_fuzzy_above_suppliers = enable_fuzzy_above_suppliers
         self._clusters: list[_Cluster] = []
         self._id_index: dict[str, _Cluster] = {}
         self._name_index: dict[str, _Cluster] = {}
         self._aliases: list[SupplierAliasRow] = []
+        self._fuzzy_disabled_reason: str | None = None
 
     def observe(self, raw_id: str | None, raw_name: str | None) -> str | None:
         """Register a supplier sighting and return its canonical supplier_key.
@@ -122,7 +137,11 @@ class SupplierCanonicaliser:
             cluster = self._name_index[name_norm]
             method = "exact_name"
             confidence = 1.0
-        elif name_norm and len(name_norm) >= self.name_min_length:
+        elif (
+            name_norm
+            and len(name_norm) >= self.name_min_length
+            and self._fuzzy_allowed()
+        ):
             cluster, score = self._fuzzy_find(name_norm)
             if cluster is not None:
                 method = "fuzzy_name"
@@ -159,8 +178,25 @@ class SupplierCanonicaliser:
         )
         return cluster.supplier_key
 
+    def _fuzzy_allowed(self) -> bool:
+        """Return whether fuzzy matching should run for the next observe()."""
+        if not self.enable_fuzzy:
+            if self._fuzzy_disabled_reason is None:
+                self._fuzzy_disabled_reason = "enable_fuzzy=false in detectors.yaml"
+            return False
+        if len(self._clusters) >= self.enable_fuzzy_above_suppliers:
+            if self._fuzzy_disabled_reason is None:
+                self._fuzzy_disabled_reason = (
+                    f"cluster count >= {self.enable_fuzzy_above_suppliers}; "
+                    "exact id/name only (scale fuzzy later)"
+                )
+            return False
+        return True
+
     def _fuzzy_find(self, name_norm: str) -> tuple[_Cluster | None, float]:
         """Find the best existing cluster by fuzzy name match above threshold."""
+        if not self._fuzzy_allowed():
+            return None, 0.0
         best: _Cluster | None = None
         best_score = 0.0
         for cluster in self._clusters:

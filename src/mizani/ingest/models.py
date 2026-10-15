@@ -60,15 +60,18 @@ class AwardRow(BaseModel):
     supplier_canonical_name: str | None = None
     supplier_match_confidence: float | None = None
     category: str | None = None
+    procurement_method: str | None = None
     county: str | None = None
     region: str | None = None
     tender_estimate: float | None = None
     tender_estimate_currency: str | None = None
+    supplier_id_scheme: str | None = None
     release_id: str | None = None
     release_date: DateTime | None = None
     excluded: bool = False
     exclude_reason: str | None = None
     data_caveats: list[str] = Field(default_factory=list)
+
 
 
 class BuyerRow(BaseModel):
@@ -138,6 +141,8 @@ class IngestStats(BaseModel):
     awards_kept: int = 0
     awards_excluded_open_tender: int = 0
     awards_excluded_person_like: int = 0
+    releases_with_empty_awards: int = 0
+    invalid_supplier_id_schemes: int = 0
     items_kept: int = 0
     buyers: int = 0
     suppliers_canonical: int = 0
@@ -146,6 +151,7 @@ class IngestStats(BaseModel):
     missing_location: int = 0
     currency_set: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+
 
     def add_note(self, message: str) -> None:
         """Append a human-readable ingest note."""

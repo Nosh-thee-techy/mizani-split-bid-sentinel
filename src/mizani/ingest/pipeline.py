@@ -62,11 +62,17 @@ def run_ingest(
 
     fuzzy_threshold = 92.0
     name_min_length = 3
+    enable_fuzzy = True
+    enable_fuzzy_above_suppliers = 5000
     if detectors_config_path and detectors_config_path.exists():
         det = load_yaml(detectors_config_path)
         sc = det.get("supplier_canonicalisation") or {}
         fuzzy_threshold = float(sc.get("fuzzy_threshold", fuzzy_threshold))
         name_min_length = int(sc.get("name_min_length", name_min_length))
+        enable_fuzzy = bool(sc.get("enable_fuzzy", enable_fuzzy))
+        enable_fuzzy_above_suppliers = int(
+            sc.get("enable_fuzzy_above_suppliers", enable_fuzzy_above_suppliers)
+        )
 
     stats = IngestStats()
     releases = load_latest_releases(raw_dir, stats)
@@ -85,6 +91,8 @@ def run_ingest(
     canonicaliser = SupplierCanonicaliser(
         fuzzy_threshold=fuzzy_threshold,
         name_min_length=name_min_length,
+        enable_fuzzy=enable_fuzzy,
+        enable_fuzzy_above_suppliers=enable_fuzzy_above_suppliers,
     )
 
     # First pass: observe all non-excluded suppliers so fuzzy merges see the full set.
@@ -177,6 +185,7 @@ def run_ingest(
                 "download_date": str(source_cfg.get("download_date") or "not-set"),
                 "raw_dir": str(raw_dir),
                 "sample_label": sample_label or "",
+                "fuzzy_disabled_reason": canonicaliser._fuzzy_disabled_reason or "",
                 "stats_json": json.dumps(stats.model_dump(mode="json"), sort_keys=True),
             },
         )

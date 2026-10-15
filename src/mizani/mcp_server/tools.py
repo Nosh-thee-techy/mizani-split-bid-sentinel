@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from mizani.detect.concentration import detect_concentration
 from mizani.detect.gap import detect_award_estimate_gaps
-from mizani.detect.price import detect_price_outliers
+from mizani.detect.price import detect_price_outliers, detect_value_benchmarks
 from mizani.detect.split import detect_splits
 from mizani.finding import Finding, FindingStatus
 from mizani.verify import verify_finding
@@ -130,29 +130,31 @@ def search_awards(
 
 
 def _load_all_awards(db_path: Path) -> list[dict[str, Any]]:
+    """Load kept awards; tolerate older DuckDB files missing newer columns."""
     conn = _connect(db_path)
     try:
-        rows = conn.execute(
-            """
-            SELECT record_id, buyer_id, buyer_name, supplier_key, category,
-                   value_amount, tender_estimate, date, data_caveats
-            FROM awards WHERE NOT excluded
-            """
-        ).fetchall()
-        cols = [
+        existing = {r[0] for r in conn.execute("DESCRIBE awards").fetchall()}
+        wanted = [
             "record_id",
             "buyer_id",
             "buyer_name",
             "supplier_key",
             "category",
+            "procurement_method",
             "value_amount",
             "tender_estimate",
             "date",
             "data_caveats",
         ]
+        cols = [c for c in wanted if c in existing]
+        rows = conn.execute(
+            f"SELECT {', '.join(cols)} FROM awards WHERE NOT excluded"
+        ).fetchall()
         out = []
         for row in rows:
             d = dict(zip(cols, row))
+            d.setdefault("procurement_method", None)
+            d.setdefault("tender_estimate", None)
             if isinstance(d.get("data_caveats"), str):
                 try:
                     d["data_caveats"] = json.loads(d["data_caveats"])
@@ -215,10 +217,20 @@ def benchmark_unit_price(
     detectors_cfg: dict[str, Any],
     award_record_id: str | None = None,
 ) -> list[Finding]:
-    """Run PRICE detector; optional focus on one item/award record id."""
+    """Run PRICE detector; auto-switches to value-benchmark when items are absent.
+
+    Real Kenya PPRA bulk has zero tender items, so unit-price mode cannot run.
+    """
     items = _load_all_items(db_path)
-    return detect_price_outliers(
-        items,
+    if items:
+        return detect_price_outliers(
+            items,
+            detectors_cfg=detectors_cfg,
+            target_record_id=award_record_id,
+        )
+    awards = _load_all_awards(db_path)
+    return detect_value_benchmarks(
+        awards,
         detectors_cfg=detectors_cfg,
         target_record_id=award_record_id,
     )

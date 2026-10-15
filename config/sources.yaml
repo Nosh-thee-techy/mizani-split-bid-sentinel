@@ -1,10 +1,26 @@
-# OCDS data sources. The loader must refuse downloads when verified is not true.
+# Verified OCDS source — do not invent alternate URLs.
+# Confirmed 2026-10-15 from Open Contracting Data Registry publication 147.
 sources:
-  - id: kenya_ppip
-    name: "Kenya Public Procurement Information Portal (PPIP) / PPRA"
-    url: "https://tenders.go.ke/ocds"
-    format: "ocds-release-package"
-    confirmed_on: null
-    confirmed_by: null
-    verified: false
-    notes: "URL is provisional until confirmed in the community channel."
+  - id: kenya_ppra_ocds_registry
+    name: "Kenya: Public Procurement Regulatory Authority (PPRA) via OCP Data Registry"
+    registry_publication: 147
+    publisher_portal: "https://tenders.go.ke/ocds"
+    registry_page: "https://data.open-contracting.org/en/publication/147"
+    download_pattern: "https://data.open-contracting.org/en/publication/147/download?name={file}"
+    files:
+      - "2026.jsonl.gz"
+      - "2025.jsonl.gz"
+    format: "ocds-jsonl-gzip"
+    ocid_prefix: "ocds-5whusi"
+    confirmed_on: "2026-10-15"
+    confirmed_by: "Open Contracting Data Registry publication page"
+    verified: true
+    licence_note: "not specified on the registry"
+    retrieved_monthly_note: "Registry retrieves monthly; last retrieved 2026-10-04 at confirmation time"
+    known_quirks:
+      - "awards and contracts arrays may be empty on some records"
+      - "top 1% of award values outweigh the rest combined"
+      - "supplier identifier schemes often invalid"
+      - "buyer identifiers have no scheme"
+      - "some parties missing names — recover from buyer.name / awards.suppliers.name"
+      - "ZERO tender items, tenderers, and planning records — no unit-price peer sets on real data"

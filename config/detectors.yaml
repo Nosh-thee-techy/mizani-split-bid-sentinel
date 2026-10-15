@@ -1,30 +1,26 @@
-# Detector hyperparameters. Tune only on eval fixtures, never on the demo case.
-
 split:
   window_days: 30
-  tolerance: 0.10  # award value within 10% below threshold
+  tolerance: 0.1
   min_awards: 2
   weights:
     n: 0.25
     distance: 0.25
     span: 0.25
     aggregate: 0.25
-  n_max: 10  # normaliser for award count term
-
+  n_max: 10
 price:
   min_peers: 8
   z_cutoff: 3.5
   winsor_low_pct: 1.0
   winsor_high_pct: 99.0
-
 concentration:
   window_days: 365
   min_awards_in_category: 5
-  share_flag: 0.50  # supplier share of awards or value
-
+  share_flag: 0.5
 gap:
-  award_to_estimate_flag: 1.5  # award / estimate ratio indicator
-
+  award_to_estimate_flag: 1.5
 supplier_canonicalisation:
-  fuzzy_threshold: 92  # rapidfuzz score 0–100; high bar
+  fuzzy_threshold: 92
   name_min_length: 3
+  enable_fuzzy: false
+  enable_fuzzy_above_suppliers: 800

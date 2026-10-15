@@ -1,21 +1,48 @@
-"""PRICE detector: robust peer unit-price benchmark using log-MAD z-scores.
+"""PRICE / value detectors: robust peer benchmarks using log-MAD z-scores.
 
   z = 0.6745 * (ln(p) - median(ln(p_peers))) / MAD(ln(p_peers))
 
-Why log + MAD: one extreme award cannot hide another the way a mean/sd would;
-0.6745 scales MAD to a normal-consistent robust z. Peers are winsorised at
-configurable percentiles before the median/MAD are computed.
+Two modes:
+- **unit_price** (synthetic / when item+unit data exist): peer by description+unit.
+- **value_benchmark** (real Kenya data): peer by main category + procurement method
+  on award *value*, because the registry reports zero tender items/units.
+
+Findings from value mode are always labelled "value benchmark within category"
+and must never be described as unit-price outliers.
 """
 
 from __future__ import annotations
 
+import json
 import math
 from collections import defaultdict
-from typing import Any, Iterable
+from typing import Any, Iterable, Literal
 
 from mizani.detect.config import load_yaml
 from mizani.finding import Finding, FindingStatus, FindingType
 from pathlib import Path
+
+BenchmarkMode = Literal["unit_price", "value_benchmark"]
+
+
+def _caveats_list(raw: Any) -> list[str]:
+    """Normalise data_caveats from dict rows (list or JSON string from DuckDB)."""
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return [str(x) for x in raw]
+    if isinstance(raw, str):
+        text = raw.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, list):
+                return [str(x) for x in parsed]
+        except json.JSONDecodeError:
+            return [text]
+        return [text]
+    return [str(raw)]
 
 
 def detect_price_outliers(
@@ -27,12 +54,16 @@ def detect_price_outliers(
 ) -> list[Finding]:
     """Flag unit prices far from the peer distribution for the same item/unit.
 
+    Synthetic / item-rich data only. Real Kenya PPRA bulk has no tender items —
+    use detect_value_benchmarks() instead.
+
     Inputs:
         items: dicts with description_norm, unit_norm, unit_value_amount,
             record_id, optional award/buyer/supplier fields.
         target_record_id: if set, only evaluate that item (still needs peers).
     Outputs:
         PRICE findings or INSUFFICIENT_PEERS findings citing the target record.
+        Metrics include benchmark_mode=unit_price.
     """
     if detectors_cfg is None and detectors_path is not None:
         detectors_cfg = load_yaml(detectors_path)
@@ -113,6 +144,8 @@ def detect_price_outliers(
                     category=t.get("category") or desc,
                     record_ids=[str(t["record_id"])],
                     metrics={
+                        "benchmark_mode": "unit_price",
+                        "benchmark_label": "unit price",
                         "unit_price": float(t["unit_value_amount"]),
                         "peer_count": len(others),
                         "log_median": round(median, 6),
@@ -130,7 +163,128 @@ def detect_price_outliers(
                         "emergency purchase",
                         "different grade/spec not captured in description",
                     ],
-                    data_caveats=list(t.get("data_caveats") or []),
+                    data_caveats=_caveats_list(t.get("data_caveats")),
+                )
+            )
+    return findings
+
+
+def detect_value_benchmarks(
+    awards: Iterable[dict[str, Any]],
+    *,
+    detectors_cfg: dict[str, Any] | None = None,
+    detectors_path: Path | None = None,
+    target_record_id: str | None = None,
+) -> list[Finding]:
+    """Flag award values far from peers in the same category + procurement method.
+
+    Real-data mode for Kenya PPRA (no item/unit fields). Every finding is
+    labelled "value benchmark within category" — never "unit price".
+    """
+    if detectors_cfg is None and detectors_path is not None:
+        detectors_cfg = load_yaml(detectors_path)
+    cfg = (detectors_cfg or {}).get("price") or {}
+    min_peers = int(cfg.get("min_peers", 8))
+    z_cutoff = float(cfg.get("z_cutoff", 3.5))
+    low_pct = float(cfg.get("winsor_low_pct", 1.0))
+    high_pct = float(cfg.get("winsor_high_pct", 99.0))
+
+    usable = [
+        a
+        for a in awards
+        if a.get("value_amount")
+        and float(a["value_amount"]) > 0
+        and a.get("record_id")
+        and a.get("category")
+    ]
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for award in usable:
+        key = (
+            str(award.get("category") or ""),
+            str(award.get("procurement_method") or "unknown"),
+        )
+        groups[key].append(award)
+
+    findings: list[Finding] = []
+    for (category, method), peers in groups.items():
+        targets = peers
+        if target_record_id:
+            targets = [p for p in peers if str(p["record_id"]) == target_record_id]
+            if not targets:
+                continue
+        for t in targets:
+            others = [p for p in peers if str(p["record_id"]) != str(t["record_id"])]
+            label = "value benchmark within category"
+            if len(others) < min_peers:
+                findings.append(
+                    Finding(
+                        type=FindingType.PRICE,
+                        buyer_id=t.get("buyer_id"),
+                        supplier_key=t.get("supplier_key"),
+                        category=category,
+                        record_ids=[str(t["record_id"])],
+                        metrics={
+                            "benchmark_mode": "value_benchmark",
+                            "benchmark_label": label,
+                            "peer_count": len(others),
+                            "min_peers": min_peers,
+                            "procurement_method": method,
+                        },
+                        status=FindingStatus.INSUFFICIENT_PEERS,
+                        benign_explanations=["thin peer market within category/method"],
+                        data_caveats=[
+                            "insufficient peers for value benchmark",
+                            "not a unit-price finding — real data has no item units",
+                        ],
+                    )
+                )
+                continue
+
+            log_vals = [math.log(float(p["value_amount"])) for p in others]
+            winsorised = _winsorise(log_vals, low_pct, high_pct)
+            median = _median(winsorised)
+            mad = _mad(winsorised, median)
+            lv = math.log(float(t["value_amount"]))
+            if mad == 0:
+                if abs(lv - median) < 1e-12:
+                    continue
+                rel = math.exp(lv) / math.exp(median)
+                if 0.5 <= rel <= 2.0:
+                    continue
+                z = 10.0 if lv > median else -10.0
+            else:
+                z = 0.6745 * (lv - median) / mad
+            if abs(z) < z_cutoff:
+                continue
+            findings.append(
+                Finding(
+                    type=FindingType.PRICE,
+                    buyer_id=t.get("buyer_id"),
+                    supplier_key=t.get("supplier_key"),
+                    category=category,
+                    record_ids=[str(t["record_id"])],
+                    metrics={
+                        "benchmark_mode": "value_benchmark",
+                        "benchmark_label": label,
+                        "award_value": float(t["value_amount"]),
+                        "peer_count": len(others),
+                        "log_median": round(median, 6),
+                        "log_mad": round(mad, 6),
+                        "robust_z": round(z, 4),
+                        "z_cutoff": z_cutoff,
+                        "procurement_method": method,
+                        "winsor_low_pct": low_pct,
+                        "winsor_high_pct": high_pct,
+                    },
+                    score=round(min(abs(z) / z_cutoff, 5.0) / 5.0, 4),
+                    status=FindingStatus.CANDIDATE,
+                    benign_explanations=[
+                        "emergency purchase",
+                        "larger scope than peer awards in the same category",
+                        "framework / multi-year package",
+                    ],
+                    data_caveats=_caveats_list(t.get("data_caveats"))
+                    + ["not a unit-price finding — real data has no item units"],
                 )
             )
     return findings

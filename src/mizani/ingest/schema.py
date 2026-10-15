@@ -60,16 +60,19 @@ CREATE TABLE IF NOT EXISTS awards (
     supplier_canonical_name VARCHAR,
     supplier_match_confidence DOUBLE,
     category VARCHAR,
+    procurement_method VARCHAR,
     county VARCHAR,
     region VARCHAR,
     tender_estimate DOUBLE,
     tender_estimate_currency VARCHAR,
+    supplier_id_scheme VARCHAR,
     release_id VARCHAR,
     release_date TIMESTAMP,
     excluded BOOLEAN,
     exclude_reason VARCHAR,
     data_caveats VARCHAR  -- JSON array
 );
+
 
 CREATE TABLE IF NOT EXISTS buyers (
     buyer_id VARCHAR PRIMARY KEY,
@@ -204,7 +207,7 @@ def insert_awards(conn: duckdb.DuckDBPyConnection, rows: Iterable[AwardRow]) -> 
         conn.execute(
             """
             INSERT INTO awards VALUES (
-                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
             )
             """,
             [
@@ -224,10 +227,12 @@ def insert_awards(conn: duckdb.DuckDBPyConnection, rows: Iterable[AwardRow]) -> 
                 d["supplier_canonical_name"],
                 d["supplier_match_confidence"],
                 d["category"],
+                d["procurement_method"],
                 d["county"],
                 d["region"],
                 d["tender_estimate"],
                 d["tender_estimate_currency"],
+                d["supplier_id_scheme"],
                 d["release_id"],
                 d["release_date"],
                 d["excluded"],

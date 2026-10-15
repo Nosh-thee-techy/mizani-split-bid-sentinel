@@ -1,7 +1,7 @@
 """Mizani command-line interface.
 
-Approval and ledger commands land in later build steps. Step 1–2 expose
-ingest and quality only.
+Typer is the single cross-platform entry point. Approval is a separate command
+(not an MCP tool) and lands with the brief flow.
 """
 
 from __future__ import annotations
@@ -19,9 +19,13 @@ app = typer.Typer(
     help="Mizani — cited procurement briefs from Kenya OCDS award data.",
     no_args_is_help=True,
 )
+ledger_app = typer.Typer(help="Evidence ledger: verify chain integrity and inspect entries.")
+app.add_typer(ledger_app, name="ledger")
 console = Console()
 
 ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_LEDGER = ROOT / "data" / "processed" / "evidence_ledger.sqlite"
+
 
 
 @app.command("ingest")
@@ -150,6 +154,57 @@ def _print_quality_summary(report: dict) -> None:
     )
     console.print(table)
     console.print_json(json.dumps(report, indent=2))
+
+
+@ledger_app.command("verify")
+def ledger_verify_cmd(
+    path: Path = typer.Option(DEFAULT_LEDGER, "--path", help="SQLite ledger path"),
+) -> None:
+    """Walk the hash chain; exit non-zero on the first broken entry."""
+    from mizani.ledger import Ledger
+
+    if not path.exists():
+        console.print(f"Ledger not found: {path}")
+        raise typer.Exit(code=1)
+    ledger = Ledger(path)
+    ok, broken, msg = ledger.verify()
+    if ok:
+        console.print(f"OK: {msg}")
+        raise typer.Exit(code=0)
+    console.print(f"BROKEN at entry_id={broken}: {msg}")
+    raise typer.Exit(code=1)
+
+
+@ledger_app.command("tail")
+def ledger_tail_cmd(
+    n: int = typer.Option(10, "--n", "-n", help="Number of recent entries"),
+    path: Path = typer.Option(DEFAULT_LEDGER, "--path", help="SQLite ledger path"),
+) -> None:
+    """Print the most recent ledger entries."""
+    from mizani.ledger import Ledger
+
+    if not path.exists():
+        console.print(f"Ledger not found: {path}")
+        raise typer.Exit(code=1)
+    ledger = Ledger(path)
+    rows = ledger.tail(n)
+    table = Table(title=f"Ledger tail (n={n})")
+    table.add_column("id")
+    table.add_column("ts")
+    table.add_column("actor")
+    table.add_column("event")
+    table.add_column("tool")
+    table.add_column("run_id")
+    for e in rows:
+        table.add_row(
+            str(e.entry_id),
+            e.ts,
+            e.actor.value,
+            e.event.value,
+            e.tool or "",
+            e.run_id,
+        )
+    console.print(table)
 
 
 if __name__ == "__main__":

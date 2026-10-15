@@ -177,6 +177,10 @@ Orchestration: **LangGraph** with checkpointing so a paused run survives restart
 capable (e.g. Qwen/Llama). Full demo task runs locally. Prompts live in
 `prompts/` as versioned text files.
 
+Tonight no tool-capable open-weights model could be pulled (network), so the
+agent runs on the deterministic planner. A schema-constrained JSON-action
+planner for gemma2:9b is the next step.
+
 **Status:** investigation graph runs end-to-end with a **deterministic planner**
 (Ollama tool-calling planner not fully wired yet — see BUILD_STATUS.md).
 Package: `src/mizani/agent/`.

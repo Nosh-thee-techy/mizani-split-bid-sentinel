@@ -15,9 +15,10 @@ from fastapi.responses import FileResponse
 
 
 ROOT = Path(__file__).resolve().parents[3]
-DEMO_DIR = ROOT / "demo"
+DEMO_DIR = ROOT / "docs"
 API_DIR = DEMO_DIR / "api"
 SAMPLES = ROOT / "data" / "samples"
+
 
 app = FastAPI(
     title="Mizani demo API",
@@ -44,7 +45,8 @@ def home() -> FileResponse:
     """Serve the demo HTML page."""
     index = DEMO_DIR / "index.html"
     if not index.exists():
-        raise HTTPException(status_code=404, detail="demo/index.html missing")
+        raise HTTPException(status_code=404, detail="docs/index.html missing")
+
     return FileResponse(index)
 
 

@@ -1,0 +1,10 @@
+# OCDS data sources. The loader must refuse downloads when verified is not true.
+sources:
+  - id: kenya_ppip
+    name: "Kenya Public Procurement Information Portal (PPIP) / PPRA"
+    url: "https://tenders.go.ke/ocds"
+    format: "ocds-release-package"
+    confirmed_on: null
+    confirmed_by: null
+    verified: false
+    notes: "URL is provisional until confirmed in the community channel."

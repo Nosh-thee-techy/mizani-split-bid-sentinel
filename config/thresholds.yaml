@@ -1,0 +1,24 @@
+# Procurement method value thresholds used by SPLIT detection.
+# IMPORTANT: Do not invent numbers. Each entry must cite a legal_source.
+# Status: PLACEHOLDER — fill from the Public Procurement and Asset Disposal
+# Act / Regulations (Kenya) before running SPLIT detectors on real data.
+# Detector code will refuse to score clusters if legal_source is missing or
+# value is null.
+
+thresholds:
+  - id: open_tender_national
+    value: null  # TODO: confirm from regulations (KES)
+    currency: KES
+    procurement_method: open
+    description: "National open tender threshold — value TBD from legal source"
+    legal_source: null  # e.g. "PPADA Regulations 2020, Schedule …"
+
+  - id: request_for_quotations
+    value: null  # TODO: confirm from regulations (KES)
+    currency: KES
+    procurement_method: limited
+    description: "RFQ / request for quotations upper bound — value TBD"
+    legal_source: null
+
+# Eval and demo fixtures may override these via detectors.yaml / fixture config
+# with synthetic thresholds that are labelled synthetic.

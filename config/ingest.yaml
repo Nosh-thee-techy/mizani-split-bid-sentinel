@@ -1,0 +1,79 @@
+# Ingestion and data-conduct settings.
+
+source:
+  # Kenya PPRA / PPIP OCDS publication (confirm before production download).
+  name: "Kenya Public Procurement Information Portal (PPIP) / PPRA"
+  portal_url: "https://tenders.go.ke/ocds"
+  api_index_url: "https://tenders.go.ke/api/ocds/index"
+  ocp_registry: "https://data.open-contracting.org/en/publication/147"
+  # Fill download_date when a bulk pull is taken for a submission run.
+  download_date: null
+
+filters:
+  # Drop tenders that are still open / live — never analyse active competitions.
+  exclude_open_tender_statuses:
+    - planned
+    - active
+    - planning
+  # Award/tender statuses treated as closed enough to keep.
+  keep_tender_statuses:
+    - complete
+    - cancelled
+    - unsuccessful
+    - withdrawn
+  # If status is missing but an award exists with a date, keep the award side.
+  keep_awarded_when_tender_status_unknown: true
+
+personal_data:
+  # Heuristics to exclude records that look like natural persons rather than companies.
+  # Conservative: prefer dropping ambiguous supplier names over keeping them.
+  exclude_person_like_suppliers: true
+  person_name_max_tokens: 3  # "Jane Wanjiku Otieno" style — flag for review/drop
+  company_markers:
+    - ltd
+    - limited
+    - co.
+    - company
+    - plc
+    - inc
+    - corp
+    - enterprises
+    - enterprise
+    - suppliers
+    - supplier
+    - traders
+    - trading
+    - services
+    - agency
+    - consultants
+    - constructions
+    - construction
+    - hardware
+    - pharmaceuticals
+    - pharma
+    - medical
+    - hospital
+    - clinic
+    - school
+    - university
+    - ministry
+    - county
+    - government
+    - authority
+    - board
+    - association
+    - cooperative
+    - co-operative
+    - sacco
+    - ngo
+    - trust
+    - foundation
+
+duplicates:
+  keep_latest_release_per_ocid: true
+
+paths:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  duckdb_path: data/processed/mizani.duckdb
+  quality_report_path: data/processed/data_quality_report.json

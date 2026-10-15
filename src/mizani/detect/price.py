@@ -1,0 +1,167 @@
+"""PRICE detector: robust peer unit-price benchmark using log-MAD z-scores.
+
+  z = 0.6745 * (ln(p) - median(ln(p_peers))) / MAD(ln(p_peers))
+
+Why log + MAD: one extreme award cannot hide another the way a mean/sd would;
+0.6745 scales MAD to a normal-consistent robust z. Peers are winsorised at
+configurable percentiles before the median/MAD are computed.
+"""
+
+from __future__ import annotations
+
+import math
+from collections import defaultdict
+from typing import Any, Iterable
+
+from mizani.detect.config import load_yaml
+from mizani.finding import Finding, FindingStatus, FindingType
+from pathlib import Path
+
+
+def detect_price_outliers(
+    items: Iterable[dict[str, Any]],
+    *,
+    detectors_cfg: dict[str, Any] | None = None,
+    detectors_path: Path | None = None,
+    target_record_id: str | None = None,
+) -> list[Finding]:
+    """Flag unit prices far from the peer distribution for the same item/unit.
+
+    Inputs:
+        items: dicts with description_norm, unit_norm, unit_value_amount,
+            record_id, optional award/buyer/supplier fields.
+        target_record_id: if set, only evaluate that item (still needs peers).
+    Outputs:
+        PRICE findings or INSUFFICIENT_PEERS findings citing the target record.
+    """
+    if detectors_cfg is None and detectors_path is not None:
+        detectors_cfg = load_yaml(detectors_path)
+    cfg = (detectors_cfg or {}).get("price") or {}
+    min_peers = int(cfg.get("min_peers", 8))
+    z_cutoff = float(cfg.get("z_cutoff", 3.5))
+    low_pct = float(cfg.get("winsor_low_pct", 1.0))
+    high_pct = float(cfg.get("winsor_high_pct", 99.0))
+
+    usable = [
+        i
+        for i in items
+        if i.get("unit_value_amount")
+        and float(i["unit_value_amount"]) > 0
+        and i.get("description_norm")
+        and i.get("unit_norm")
+        and i.get("record_id")
+    ]
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for item in usable:
+        groups[(str(item["description_norm"]), str(item["unit_norm"]))].append(item)
+
+    findings: list[Finding] = []
+    for (desc, unit), peers in groups.items():
+        targets = peers
+        if target_record_id:
+            targets = [p for p in peers if str(p["record_id"]) == target_record_id]
+            if not targets:
+                continue
+        if len(peers) < min_peers:
+            for t in targets:
+                findings.append(
+                    Finding(
+                        type=FindingType.PRICE,
+                        buyer_id=t.get("buyer_id"),
+                        supplier_key=t.get("supplier_key"),
+                        category=t.get("category") or desc,
+                        record_ids=[str(t["record_id"])],
+                        metrics={
+                            "peer_count": len(peers),
+                            "min_peers": min_peers,
+                            "description_norm": desc,
+                            "unit_norm": unit,
+                        },
+                        status=FindingStatus.INSUFFICIENT_PEERS,
+                        benign_explanations=["thin peer market"],
+                        data_caveats=["insufficient peers for robust benchmark"],
+                    )
+                )
+            continue
+
+        log_prices = [math.log(float(p["unit_value_amount"])) for p in peers]
+        winsorised = _winsorise(log_prices, low_pct, high_pct)
+        median = _median(winsorised)
+        mad = _mad(winsorised, median)
+        if mad == 0:
+            continue
+        for t in targets:
+            lp = math.log(float(t["unit_value_amount"]))
+            z = 0.6745 * (lp - median) / mad
+            if abs(z) < z_cutoff and target_record_id is None:
+                continue
+            if abs(z) < z_cutoff and target_record_id is not None:
+                # Explicit target asked: still return metrics but not as flag unless over cutoff
+                if abs(z) < z_cutoff:
+                    continue
+            findings.append(
+                Finding(
+                    type=FindingType.PRICE,
+                    buyer_id=t.get("buyer_id"),
+                    supplier_key=t.get("supplier_key"),
+                    category=t.get("category") or desc,
+                    record_ids=[str(t["record_id"])],
+                    metrics={
+                        "unit_price": float(t["unit_value_amount"]),
+                        "peer_count": len(peers),
+                        "log_median": round(median, 6),
+                        "log_mad": round(mad, 6),
+                        "robust_z": round(z, 4),
+                        "z_cutoff": z_cutoff,
+                        "description_norm": desc,
+                        "unit_norm": unit,
+                        "winsor_low_pct": low_pct,
+                        "winsor_high_pct": high_pct,
+                    },
+                    score=round(min(abs(z) / z_cutoff, 5.0) / 5.0, 4),
+                    status=FindingStatus.CANDIDATE,
+                    benign_explanations=[
+                        "emergency purchase",
+                        "different grade/spec not captured in description",
+                    ],
+                    data_caveats=list(t.get("data_caveats") or []),
+                )
+            )
+    return findings
+
+
+def _percentile(sorted_vals: list[float], pct: float) -> float:
+    """Linear percentile of a sorted list (pct in 0..100)."""
+    if not sorted_vals:
+        return 0.0
+    if len(sorted_vals) == 1:
+        return sorted_vals[0]
+    k = (len(sorted_vals) - 1) * (pct / 100.0)
+    f = math.floor(k)
+    c = math.ceil(k)
+    if f == c:
+        return sorted_vals[int(k)]
+    return sorted_vals[f] * (c - k) + sorted_vals[c] * (k - f)
+
+
+def _winsorise(values: list[float], low_pct: float, high_pct: float) -> list[float]:
+    """Clamp extremes so one documented outlier cannot dominate MAD."""
+    ordered = sorted(values)
+    lo = _percentile(ordered, low_pct)
+    hi = _percentile(ordered, high_pct)
+    return [min(max(v, lo), hi) for v in values]
+
+
+def _median(values: list[float]) -> float:
+    """Median of a non-empty list."""
+    ordered = sorted(values)
+    n = len(ordered)
+    mid = n // 2
+    if n % 2:
+        return ordered[mid]
+    return 0.5 * (ordered[mid - 1] + ordered[mid])
+
+
+def _mad(values: list[float], median: float) -> float:
+    """Median absolute deviation from *median*."""
+    return _median([abs(v - median) for v in values])
